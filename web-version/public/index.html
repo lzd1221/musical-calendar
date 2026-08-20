@@ -79,6 +79,9 @@
   .bing-item .bt a{color:var(--accent);text-decoration:none}
   .bing-item .bs{font-size:12.5px;color:var(--muted);margin-top:2px}
   .bing-item .bu{font-size:11.5px;color:var(--dim)}
+  .deep-info{margin-top:6px;padding:8px 10px;background:rgba(81,207,102,.06);border:1px solid rgba(81,207,102,.25);border-radius:8px;font-size:12.5px}
+  .deep-info .di-open{color:var(--ok);font-weight:700}
+  .deep-info .di-times{color:var(--muted);margin-top:3px}
 
   /* 提示 */
   .tips-box{border:1px solid rgba(255,212,59,.45);background:rgba(255,212,59,.07);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--warn);margin-top:14px}
@@ -204,11 +207,21 @@ function renderResults(res){
   }
 
   if(res.bing && res.bing.length){
-    html += '<div class="card"><h2>🔍 必应参考结果 <span class="hint">平台接口未命中时，可从这里打开官方页面</span></h2>';
+    const title = res.deepHits ? '🎫 相关网页（已解析出开票信息）' : '🔍 相关网页参考';
+    html += '<div class="card"><h2>'+title+' <span class="hint">'+ESC(res.searchSrc||'搜索')+'发现，点开核对官方信息</span></h2>';
     for(const b of res.bing){
-      html += '<div class="bing-item"><div class="bt"><a target="_blank" rel="noopener" href="'+ESC(b.url)+'">'+ESC(b.title)+'</a></div>'+
-              (b.snippet?'<div class="bs">'+ESC(b.snippet)+'</div>':'')+
-              '<div class="bu">'+ESC(b.url.slice(0,80))+'</div></div>';
+      html += '<div class="bing-item"><div class="bt"><a target="_blank" rel="noopener" href="'+ESC(b.url)+'">'+ESC(b.title)+'</a></div>';
+      if(b.deep && (b.deep.openText || (b.deep.showTimes||[]).length || b.deep.venue || b.deep.price)){
+        html += '<div class="deep-info">';
+        if(b.deep.openText) html += '<span class="di-open">🎫 开票：'+ESC(b.deep.openText)+'</span> ';
+        if(b.deep.venue) html += '<span>📍 '+ESC(b.deep.venue)+'</span> ';
+        if(b.deep.price) html += '<span>💰 '+ESC(b.deep.price)+'</span> ';
+        if(b.deep.showTimes && b.deep.showTimes.length) html += '<div class="di-times">📅 '+b.deep.showTimes.slice(0,4).map(t=>ESC(t.date)+(t.start?' '+ESC(t.start):'')).join('　')+'</div>';
+        html += '</div>';
+      }else if(b.snippet){
+        html += '<div class="bs">'+ESC(b.snippet)+'</div>';
+      }
+      html += '<div class="bu">'+ESC(b.url.slice(0,80))+'</div></div>';
     }
     html += '</div>';
   }
@@ -221,7 +234,7 @@ async function doSearch(){
   if(!name){ alert('请输入剧名'); return; }
   const btn = $('#btnSearch');
   btn.disabled = true; btn.textContent = '⏳ 爬取中…';
-  $('#srcStatus').innerHTML = '<span class="src-chip loading"><span class="dot"></span>正在请求 大麦/猫眼/保利/二手平台 + 360搜索/必应…（约 5-10 秒）</span>';
+  $('#srcStatus').innerHTML = '<span class="src-chip loading"><span class="dot"></span>正在请求 大麦/猫眼/保利/二手平台 + 360搜索/必应 + 深度解析…（约 8-15 秒）</span>';
   $('#resultArea').innerHTML = '';
   try{
     const qs = new URLSearchParams({ name, city: $('#city').value, year: $('#year').value });

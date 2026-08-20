@@ -10,9 +10,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const sources = require('./sources/index.js');
+const deep = require('./sources/deep.js');
 const { showKey, primaryScore } = require('./sources/normalize.js');
 
-const PORT = Number(process.env.PORT || 8765);
+const PORT = Number(process.env.PORT || 8878);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 /* ---------------- 静态文件服务 ---------------- */
@@ -111,6 +112,14 @@ async function handleSearch(q) {
   }
   if (searchSrc) status.push({ name: searchSrc, ok: true, count: searchRef.length });
 
+  // 深度解析：抓取参考网页正文，直接提取开票时间/演出时间/场馆/票价
+  let deepHits = 0;
+  if (searchRef.length) {
+    searchRef = await deep.analyze(searchRef, 4);
+    deepHits = searchRef.filter(x => x.deep && (x.deep.openText || x.deep.showTimes.length)).length;
+    if (deepHits) status.push({ name: '深度解析', ok: true, count: deepHits });
+  }
+
   const merged = mergeResults(results, { city, year });
   const platformHits = merged.length;
 
@@ -120,19 +129,22 @@ async function handleSearch(q) {
     list: merged,
     bing: searchRef,
     searchSrc,
+    deepHits,
     status,
     ts: Date.now(),
-    tips: buildTips(status, platformHits, searchRef.length)
+    tips: buildTips(status, platformHits, searchRef.length, deepHits)
   };
 }
 
-function buildTips(status, hits, refCount) {
+function buildTips(status, hits, refCount, deepHits) {
   const tips = [];
   if (hits > 0) {
     tips.push('已从票务平台获取到该剧目信息，开票时间/场次以官方页面为准。');
   } else {
     tips.push('平台接口未能返回数据（多为平台反爬限制）。');
-    if (refCount > 0) {
+    if (deepHits > 0) {
+      tips.push('已从相关网页中解析出开票时间/演出信息（见下方「🎫 已解析信息」），请核对后再抢票。');
+    } else if (refCount > 0) {
       tips.push('已为你找到相关网页参考（下方列表），可点开官方/票务页面获取开票时间，或用「手动录入」补全。');
     } else {
       tips.push('搜索引擎此刻可能正被限流（间歇性反爬），建议等 1-2 分钟再试，或换关键词。');
@@ -159,8 +171,21 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res);
 });
 
-server.listen(PORT, () => {
-  console.log('🎭 音乐剧排期 & 抢票日历（网页版）已启动');
-  console.log('   本地访问:  http://localhost:' + PORT);
-  console.log('   搜索接口:  http://localhost:' + PORT + '/api/search?name=剧院魅影&city=上海');
-});
+// 端口被占用时自动向后顺延，避免启动崩溃
+function listenWithFallback(server, port, attemptsLeft) {
+  server.once('error', err => {
+    if (err.code === 'EADDRINUSE' && attemptsLeft > 0) {
+      console.warn('端口 ' + port + ' 被占用，改用 ' + (port + 1));
+      listenWithFallback(server, port + 1, attemptsLeft - 1);
+    } else {
+      console.error('监听失败:', err.message);
+      process.exit(1);
+    }
+  });
+  server.listen(port, () => {
+    console.log('🎭 音乐剧排期 & 抢票日历（网页版）已启动');
+    console.log('   本地访问:  http://localhost:' + port);
+    console.log('   搜索接口:  http://localhost:' + port + '/api/search?name=剧院魅影&city=上海');
+  });
+}
+listenWithFallback(server, PORT, 10);
