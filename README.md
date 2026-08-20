@@ -7,9 +7,11 @@
 
 | 版本 | 地址 | 能自动爬数据吗 | 适合 |
 |---|---|---|---|
-| ① 离线版 | https://lzd1221.github.io/musical-calendar/ | ❌ 手动录入 | 随手规划、离线可用 |
+| ① 离线版 | https://lzd1221.github.io/musical-calendar/musical-calendar.html | ❌ 手动录入 | 随手规划、离线可用 |
 | ② 本地爬虫网页版 | 本地 `http://localhost:8878` | ✅ 能（360/必应 + 深度解析） | **日常主力**，填剧名自动获取信息 |
 | ③ 微信小程序版 | 需微信开发者工具部署 | ✅ 能（云函数） | 手机端、开票/开演推送提醒 |
+
+> 📌 GitHub Pages 首页（https://lzd1221.github.io/musical-calendar/ ）已切换为 **② 搜索界面预览版**（剧名联想/城市点选可体验，搜索需本地运行）；离线版请访问上方 ① 的地址。
 
 ---
 
@@ -78,8 +80,8 @@ node web-version/server.js
 
 ### 打开方式
 
-- **在线**：https://lzd1221.github.io/musical-calendar/ （GitHub Pages，手机/电脑均可）
-- **本地**：双击 `musical-calendar.html`（或 `index.html`，两者内容一致），拖进 Chrome/Edge
+- **在线**：https://lzd1221.github.io/musical-calendar/musical-calendar.html
+- **本地**：双击 `musical-calendar.html`（单文件，无依赖），拖进 Chrome/Edge
 
 ### 使用流程
 
@@ -140,7 +142,7 @@ node web-version/server.js
 
 ```
 ├── musical-calendar.html      # ① 离线版（单文件）
-├── index.html                 # ① 同上（GitHub Pages 首页入口）
+├── index.html                 # Pages 首页 = ② 搜索界面（与 web-version/public/index.html 同步）
 ├── web-version/               # ② 本地爬虫网页版
 │   ├── server.js              #     Node 服务（静态页 + /api/search 爬取）
 │   ├── 启动网页版.bat         #     Windows 一键启动

@@ -198,7 +198,8 @@ const IS_LOCAL = ['localhost', '127.0.0.1'].indexOf(location.hostname) > -1;
   b.style.cssText = 'background:rgba(242,178,76,.14);border:1px solid rgba(242,178,76,.5);color:#ffd98a;' +
     'border-radius:10px;padding:10px 16px;font-size:13px;margin-bottom:14px;line-height:1.7';
   b.innerHTML = '👀 当前为 <b>GitHub Pages 预览版</b>：剧名联想、城市点选、界面效果均可体验；<br>' +
-    '「搜索/爬取」需要本地运行 <code>node web-version/server.js</code> 后访问 <code>http://localhost:8878</code>（静态托管无法跑爬虫）。';
+    '「搜索/爬取」需要本地运行 <code>node web-version/server.js</code> 后访问 <code>http://localhost:8878</code>（静态托管无法跑爬虫）。<br>' +
+    '另见：<a href="./musical-calendar.html" style="color:#ffd98a">离线手动版（无爬虫，示例数据+手动录入）</a>。';
   document.querySelector('.wrap').prepend(b);
 })();
 
