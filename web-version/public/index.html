@@ -189,6 +189,19 @@ const ESC = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const REC_KEY = 'web-version-records';
 const CITY_KEY = 'web-version-city';
 
+/* ---- 环境检测：GitHub Pages 预览版 vs 本地服务版 ----
+   Pages 是静态托管，无法运行爬虫；本地 http://localhost:8878 才能真正搜索。 */
+const IS_LOCAL = ['localhost', '127.0.0.1'].indexOf(location.hostname) > -1;
+(function previewBanner() {
+  if (IS_LOCAL) return;
+  const b = document.createElement('div');
+  b.style.cssText = 'background:rgba(242,178,76,.14);border:1px solid rgba(242,178,76,.5);color:#ffd98a;' +
+    'border-radius:10px;padding:10px 16px;font-size:13px;margin-bottom:14px;line-height:1.7';
+  b.innerHTML = '👀 当前为 <b>GitHub Pages 预览版</b>：剧名联想、城市点选、界面效果均可体验；<br>' +
+    '「搜索/爬取」需要本地运行 <code>node web-version/server.js</code> 后访问 <code>http://localhost:8878</code>（静态托管无法跑爬虫）。';
+  document.querySelector('.wrap').prepend(b);
+})();
+
 /* ---- 剧名词库（联想用，可自行增补）---- */
 const SHOWS = [
   { n: '剧院魅影', c: '上海' }, { n: '剧院魅影:真爱永恒', c: '上海' }, { n: '悲惨世界', c: '上海' },
@@ -357,6 +370,11 @@ function renderResults(res){
 async function doSearch(){
   const name = $('#kw').value.trim();
   if(!name){ alert('请输入剧名'); return; }
+  if(!IS_LOCAL){
+    $('#srcStatus').innerHTML = '';
+    $('#resultArea').innerHTML = '<div class="card tips-box">⚠️ 预览版无法在线爬取。<br>请在本地运行 <code>node web-version/server.js</code>，然后访问 <a href="http://localhost:8878">http://localhost:8878</a> 使用完整搜索功能。</div>';
+    return;
+  }
   const btn = $('#btnSearch');
   btn.disabled = true; btn.textContent = '⏳ 爬取中…';
   $('#srcStatus').innerHTML = '<span class="src-chip loading"><span class="dot"></span>正在请求 大麦/猫眼/保利/二手平台 + 360搜索/必应 + 深度解析…（约 8-15 秒）</span>';
