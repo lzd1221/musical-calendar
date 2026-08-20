@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎭 音乐剧排期 & 抢票日历 · 网页版</title>
+<style>
+  :root{
+    --bg:#12101e; --bg2:#0e0c18; --panel:#1b1730; --panel2:#221d3d;
+    --border:#332c55; --text:#ece9f7; --muted:#a49fc4; --dim:#6f6a92;
+    --accent:#f2b24c; --ok:#51cf66; --danger:#ff6b6b; --warn:#ffd43b; --info:#6c9eff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+    background:linear-gradient(160deg,var(--bg),var(--bg2));color:var(--text);
+    font-size:14px;line-height:1.6;min-height:100vh;padding-bottom:60px;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:24px 18px}
+  header{text-align:center;padding:26px 0 8px}
+  header h1{font-size:24px;letter-spacing:.5px}
+  header .sub{color:var(--dim);font-size:13px;margin-top:6px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-top:16px}
+  .card h2{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h2 .hint{font-size:12px;color:var(--dim);font-weight:400}
+  .muted{color:var(--muted)} .dim{color:var(--dim)} .small{font-size:12px}
+
+  /* 搜索 */
+  .search-row{display:flex;gap:10px;flex-wrap:wrap}
+  .search-row input[type=text]{flex:1;min-width:200px}
+  input,select{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:11px 14px;font-size:15px;outline:none;font-family:inherit;
+  }
+  input:focus,select:focus{border-color:var(--accent)}
+  select{padding:11px 10px}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:11px 24px;border-radius:10px;border:1px solid var(--border);
+    background:var(--panel2);color:var(--text);cursor:pointer;font-size:15px;transition:.15s;
+  }
+  .btn.primary{background:var(--accent);color:#1a1428;font-weight:600;border-color:var(--accent)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.sm{padding:6px 14px;font-size:13px;border-radius:8px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* 来源状态 */
+  .src-status{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .src-chip{
+    font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid var(--border);
+    color:var(--muted);display:inline-flex;align-items:center;gap:5px;
+  }
+  .src-chip.ok{color:var(--ok);border-color:rgba(81,207,102,.5)}
+  .src-chip.fail{color:var(--danger);border-color:rgba(255,107,107,.5)}
+  .src-chip.loading{color:var(--warn);border-color:rgba(255,212,59,.5)}
+  .src-chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+
+  /* 结果卡片 */
+  .show-card{border:1px solid var(--border);border-radius:12px;background:var(--panel2);padding:14px 16px;margin-top:12px}
+  .show-card .t1{font-size:17px;font-weight:700}
+  .pills{margin:8px 0}
+  .pill{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted);margin-right:6px;margin-top:4px}
+  .pill.plat{color:var(--accent);border-color:rgba(242,178,76,.5)}
+  .pill.resale{color:var(--warn);border-color:rgba(255,212,59,.5)}
+  .tick-row{display:flex;align-items:center;gap:12px;margin:6px 0;flex-wrap:wrap}
+  .cd{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+  .cd.hot{color:var(--danger)}
+  .link{color:var(--info);text-decoration:none;font-size:13px}
+  .link:hover{text-decoration:underline}
+  .perf{font-size:13px;color:var(--muted);border-top:1px dashed var(--border);padding:6px 0 0;margin-top:8px}
+  .perf span{margin-right:14px}
+  .chan{font-size:13px;color:var(--muted);padding:3px 0}
+  .chan a{color:var(--info);text-decoration:none}
+
+  /* 必应参考 */
+  .bing-item{padding:8px 2px;border-bottom:1px dashed var(--border)}
+  .bing-item:last-child{border-bottom:none}
+  .bing-item .bt{font-weight:600;font-size:14px}
+  .bing-item .bt a{color:var(--accent);text-decoration:none}
+  .bing-item .bs{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .bing-item .bu{font-size:11.5px;color:var(--dim)}
+
+  /* 提示 */
+  .tips-box{border:1px solid rgba(255,212,59,.45);background:rgba(255,212,59,.07);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--warn);margin-top:14px}
+  .tips-box.good{border-color:rgba(81,207,102,.45);background:rgba(81,207,102,.07);color:var(--ok)}
+
+  /* 手动录入 */
+  .manual-form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:6px}
+  .manual-form .full{grid-column:1/-1}
+  .manual-form label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+  textarea{grid-column:1/-1;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13.5px;font-family:inherit;min-height:70px;resize:vertical}
+  .record{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px;background:var(--panel2)}
+  .record .r-title{font-weight:600}
+  .empty{text-align:center;color:var(--dim);padding:30px 10px}
+  .empty .big{font-size:44px;margin-bottom:8px}
+  .hidden{display:none}
+  details{font-size:13px}
+  details summary{cursor:pointer;color:var(--muted);padding:6px 0}
+  footer{text-align:center;color:var(--dim);font-size:12px;margin-top:30px;line-height:2}
+  @media (max-width:640px){.manual-form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎭 音乐剧排期 & 抢票日历 · 网页版</h1>
+    <div class="sub">输入剧名，自动爬取抢票平台 / 开票时间 / 场次信息；爬不到会明确提示</div>
+  </header>
+
+  <!-- 搜索 -->
+  <div class="card">
+    <div class="search-row">
+      <input type="text" id="kw" placeholder="输入音乐剧名称，如：剧院魅影" list="hotList">
+      <datalist id="hotList">
+        <option>剧院魅影</option><option>悲惨世界</option><option>汉密尔顿</option>
+        <option>摇滚莫扎特</option><option>巴黎圣母院</option><option>基督山伯爵</option>
+      </datalist>
+      <select id="city">
+        <option>上海</option><option>北京</option><option>广州</option><option>深圳</option>
+        <option>杭州</option><option>南京</option><option>苏州</option><option>成都</option>
+        <option>武汉</option><option>西安</option><option>长沙</option><option>其他</option>
+      </select>
+      <select id="year">
+        <option value="">不限年份</option>
+        <option value="2026">2026</option>
+        <option value="2025" selected>2025</option>
+        <option value="2024">2024</option>
+      </select>
+      <button class="btn primary" id="btnSearch">🔍 搜索</button>
+    </div>
+    <div id="srcStatus" class="src-status"></div>
+  </div>
+
+  <!-- 结果 -->
+  <div id="resultArea"></div>
+
+  <!-- 手动录入兜底 -->
+  <div class="card">
+    <details>
+      <summary>✍️ 爬取不到？手动录入（信息会保存在本机浏览器）</summary>
+      <div class="manual-form" style="margin-top:10px">
+        <div><label>剧名 *</label><input type="text" id="m-title" placeholder="如：剧院魅影"></div>
+        <div><label>城市 / 年份</label><input type="text" id="m-city" placeholder="上海 2025"></div>
+        <div><label>开票时间（可选）</label><input type="text" id="m-open" placeholder="2025-06-01 10:00"></div>
+        <div><label>购票链接（可选）</label><input type="text" id="m-url" placeholder="https://…"></div>
+        <textarea id="m-perfs" placeholder="场次排期（每行一场）：&#10;2025-06-20 19:30 上海文化广场&#10;2025-06-21 14:00 上海文化广场"></textarea>
+        <button class="btn primary full" id="btnManual">保存到我的记录</button>
+      </div>
+    </details>
+    <div id="records"></div>
+  </div>
+
+  <footer>
+    数据由本地 Node 服务（server.js）真实抓取：票务平台接口直连 + 360/必应搜索兜底。<br>
+    票务平台普遍存在反爬限制，直连失败属正常现象——此时会给出网页参考与手动录入兜底；开票时间以官方渠道为准。<br>
+    使用前请先启动服务：<code>node web-version/server.js</code>，再访问 <code>http://localhost:8765</code>。
+  </footer>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const ESC = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const REC_KEY = 'web-version-records';
+
+function fmtDT(ts){ if(!ts) return '未公布'; const d=new Date(ts); return (d.getMonth()+1)+'月'+d.getDate()+'日 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function cdText(ts){ if(!ts) return '未公布'; const ms=ts-Date.now(); if(ms<=0) return '已开票'; const s=Math.floor(ms/1000); const d=Math.floor(s/86400), h=Math.floor((s%86400)/3600), m=Math.floor((s%3600)/60); return d>0 ? d+'天 '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0') : String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+
+function renderSrcStatus(status){
+  const box = $('#srcStatus');
+  if(!status || !status.length){ box.innerHTML=''; return; }
+  box.innerHTML = status.map(s=>{
+    const cls = s.ok ? 'ok' : (s.skipped ? '' : 'fail');
+    const label = s.ok ? (s.name + ' ✓' + (s.count ? ' ('+s.count+')' : ''))
+                : (s.skipped ? s.name + '（已禁用）' : s.name + ' ⛔' + (s.error ? '：' + s.error.slice(0,40) : ''));
+    return '<span class="src-chip '+cls+'"><span class="dot"></span>'+ESC(label)+'</span>';
+  }).join('');
+}
+
+function renderResults(res){
+  const area = $('#resultArea');
+  let html = '';
+  const tips = (res.tips || []).map(t=>'<div>· '+ESC(t)+'</div>').join('');
+  html += '<div class="card" style="border-color:rgba(255,212,59,.4)"><div class="tips-box '+(res.ok?'good':'')+'">'+tips+'</div></div>';
+
+  if(res.list && res.list.length){
+    for(const s of res.list){
+      const cd = cdText(s.ticketOpenAt);
+      const hot = s.ticketOpenAt && s.ticketOpenAt-Date.now() <= 30*60000 && s.ticketOpenAt > Date.now();
+      html += '<div class="card show-card"><div class="t1">'+ESC(s.title)+'</div>';
+      html += '<div class="pills"><span class="pill">'+ESC(s.city||'城市未知')+'</span><span class="pill">'+ESC(s.year||'年份未知')+'</span><span class="pill plat">'+ESC(s.platform||'')+'</span>'+(s.resale?'<span class="pill resale">二手/比价</span>':'')+'</div>';
+      html += '<div class="tick-row"><span class="dim small">开票</span><span class="cd'+(hot?' hot':'')+'">'+ESC(cd)+'</span><span class="dim small">'+(s.ticketOpenText?ESC(s.ticketOpenText):'')+'</span>';
+      if(s.ticketUrl) html += '<a class="link" target="_blank" rel="noopener" href="'+ESC(s.ticketUrl)+'">去购票 ↗</a>';
+      html += '</div>';
+      if(s.performances && s.performances.length){
+        html += '<div class="perf">'+s.performances.map(p=>'<span>📅 '+ESC(p.date||'')+' '+(p.weekday?p.weekday:'')+'</span><span>🕐 '+ESC(p.start||'待定')+(p.end?'–'+ESC(p.end):'')+'</span><span>📍 '+ESC(p.venue||'')+'</span>').join('')+'</div>';
+      }
+      if(s.channels && s.channels.length>1){
+        html += '<div class="chan" style="margin-top:8px">其他渠道：'+
+          s.channels.filter(c=>c.platform!==s.platform).map(c=>'<span>'+ESC(c.platform)+' <a target="_blank" rel="noopener" href="'+ESC(c.url)+'">打开 ↗</a></span>　').join('')+'</div>';
+      }
+      html += '</div>';
+    }
+  }
+
+  if(res.bing && res.bing.length){
+    html += '<div class="card"><h2>🔍 必应参考结果 <span class="hint">平台接口未命中时，可从这里打开官方页面</span></h2>';
+    for(const b of res.bing){
+      html += '<div class="bing-item"><div class="bt"><a target="_blank" rel="noopener" href="'+ESC(b.url)+'">'+ESC(b.title)+'</a></div>'+
+              (b.snippet?'<div class="bs">'+ESC(b.snippet)+'</div>':'')+
+              '<div class="bu">'+ESC(b.url.slice(0,80))+'</div></div>';
+    }
+    html += '</div>';
+  }
+  if(!res.list || !res.list.length) html += '<div class="card empty"><div class="big">🎭</div>未爬取到「'+ESC(res.name)+'」的信息，可尝试：换关键词 / 不带年份 / 稍后再试 / 手动录入</div>';
+  area.innerHTML = html;
+}
+
+async function doSearch(){
+  const name = $('#kw').value.trim();
+  if(!name){ alert('请输入剧名'); return; }
+  const btn = $('#btnSearch');
+  btn.disabled = true; btn.textContent = '⏳ 爬取中…';
+  $('#srcStatus').innerHTML = '<span class="src-chip loading"><span class="dot"></span>正在请求 大麦/猫眼/保利/二手平台 + 360搜索/必应…（约 5-10 秒）</span>';
+  $('#resultArea').innerHTML = '';
+  try{
+    const qs = new URLSearchParams({ name, city: $('#city').value, year: $('#year').value });
+    const r = await fetch('/api/search?' + qs.toString());
+    const res = await r.json();
+    renderSrcStatus(res.status);
+    renderResults(res);
+  }catch(e){
+    $('#srcStatus').innerHTML = '';
+    $('#resultArea').innerHTML = '<div class="card tips-box">⚠️ 请求失败：'+ESC(e.message)+'<br>请确认本地服务已启动（node web-version/server.js）且本页是从 http://localhost:8765 打开的。</div>';
+  }finally{
+    btn.disabled = false; btn.textContent = '🔍 搜索';
+  }
+}
+
+/* ---- 手动录入 ---- */
+function loadRecords(){ try{ return JSON.parse(localStorage.getItem(REC_KEY)||'[]'); }catch(e){ return []; } }
+function saveRecords(list){ localStorage.setItem(REC_KEY, JSON.stringify(list)); }
+function renderRecords(){
+  const list = loadRecords();
+  $('#records').innerHTML = list.length
+    ? list.map((r,i)=>'<div class="record"><div class="r-title">'+ESC(r.title)+' <span class="dim small">'+ESC(r.cityYear||'')+'</span></div><div class="small dim">'+(r.open?('🎫 开票 '+ESC(r.open)+'　'):'')+(r.url?'<a class="link" target="_blank" rel="noopener" href="'+ESC(r.url)+'">购票链接</a>':'')+'</div><div style="margin-top:4px"><button class="btn sm" data-del="'+i+'">删除</button></div></div>').join('')
+    : '<div class="dim small" style="padding-top:8px">暂无记录</div>';
+}
+function addRecord(){
+  const title = $('#m-title').value.trim();
+  if(!title){ alert('请填写剧名'); return; }
+  const list = loadRecords();
+  list.unshift({ title, cityYear: $('#m-city').value.trim(), open: $('#m-open').value.trim(), url: $('#m-url').value.trim(), perfs: $('#m-perfs').value.trim(), t: Date.now() });
+  saveRecords(list.slice(0, 50));
+  renderRecords();
+  $('#m-title').value=''; $('#m-open').value=''; $('#m-url').value=''; $('#m-perfs').value='';
+}
+
+$('#btnSearch').addEventListener('click', doSearch);
+$('#kw').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+$('#btnManual').addEventListener('click', addRecord);
+$('#records').addEventListener('click', e=>{
+  const del = e.target.dataset && e.target.dataset.del;
+  if(del !== undefined){
+    const list = loadRecords(); list.splice(+del, 1); saveRecords(list); renderRecords();
+  }
+});
+renderRecords();
+</script>
+</body>
+</html>
