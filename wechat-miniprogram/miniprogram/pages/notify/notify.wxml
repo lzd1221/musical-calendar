@@ -1,0 +1,47 @@
+<view class="page">
+  <view wx:if="{{subHint}}" class="card" style="border-color:rgba(255,212,59,.5)">
+    <view class="small" style="color:var(--pri2)">{{subHint}}</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">🔔 提醒说明
+      <view class="spacer"></view>
+      <button class="btn primary sm" bindtap="onSubscribeNext" wx:if="{{ticketList.length}}">一键订阅最近开票</button>
+    </view>
+    <view class="tips">
+      微信对娱乐类小程序采用「一次性订阅消息」：<b>每点一次授权 = 获得 1 次提醒额度</b>。<br/>
+      在剧目详情页或本页点击订阅，开票前 30 分钟与开演前 24 小时/2 小时自动推送。iOS 与 Android 均支持。
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">🎫 即将开票</view>
+    <view wx:if="{{!loading && !ticketList.length}}" class="muted small">暂无已公布开票时间的关注剧目。</view>
+    <view class="tick" wx:for="{{ticketList}}" wx:key="showId" data-id="{{item.showId}}" bindtap="goShow">
+      <view class="spacer">
+        <view class="bold">{{item.title}}</view>
+        <view class="dim small">开票：{{item.text}}</view>
+      </view>
+      <view class="countdown {{item.cd.hot ? 'hot' : ''}} {{item.cd.past ? '' : ''}}">{{item.cd.text}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">📅 7 天内开演</view>
+    <view wx:if="{{!loading && !showList.length}}" class="muted small">最近 7 天没有关注的演出场次。</view>
+    <view class="tick" wx:for="{{showList}}" wx:key="index" data-id="{{item.showId}}" bindtap="goShow">
+      <view class="spacer">
+        <view class="bold">{{item.title}}</view>
+        <view class="dim small">{{item.date}} {{item.weekday}} {{item.start}} · {{item.venue}}</view>
+      </view>
+      <view class="countdown">{{item.cd.text}}</view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{!loading && !hasWatched}}">
+    <view class="empty" style="padding:30rpx 0">
+      <view class="big">🔕</view>
+      <view class="desc">还没有关注的剧目。<br/>去首页搜索并关注你想看的音乐剧吧。</view>
+    </view>
+  </view>
+</view>

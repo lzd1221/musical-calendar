@@ -1,0 +1,60 @@
+<view class="page">
+  <!-- 搜索区 -->
+  <view class="card">
+    <input class="input" placeholder="输入音乐剧名称，如：剧院魅影" value="{{keyword}}"
+           bindinput="onKeywordInput" bindconfirm="onSearch" confirm-type="search" />
+    <view class="row opts">
+      <picker mode="selector" range="{{cityOptions}}" value="{{cityIndex}}" bindchange="onCityChange">
+        <view class="picker"><text>{{city}}</text><text class="arrow">▾</text></view>
+      </picker>
+      <picker mode="selector" range="{{yearOptions}}" value="{{yearIndex}}" bindchange="onYearChange">
+        <view class="picker"><text>{{yearOptions[yearIndex]}}</text><text class="arrow">▾</text></view>
+      </picker>
+      <button class="btn primary search-btn" bindtap="onSearch" size="mini">搜索</button>
+    </view>
+  </view>
+
+  <!-- 搜索结果 -->
+  <view wx:if="{{searched}}">
+    <view class="row search-head">
+      <text class="muted small">{{searching ? '正在查询中…' : '共 ' + results.length + ' 条结果'}}</text>
+      <view class="spacer"></view>
+      <text class="dim small" wx:if="{{sourcesTip}}">{{sourcesTip}}</text>
+    </view>
+    <view wx:if="{{searching}}" class="empty"><view class="big">🔍</view><view class="desc">正在从 大麦/猫眼/保利 等平台查询…</view></view>
+    <view wx:elif="{{results.length}}">
+      <show-card wx:for="{{results}}" wx:key="_id" show="{{item}}" watched="{{item.watched}}" />
+    </view>
+    <view wx:else class="card empty">
+      <view class="big">🎭</view>
+      <view class="desc">没有自动获取到「{{keyword}}」的信息。<br/>可能原因：尚未开票/平台未收录/反爬限制。</view>
+      <button class="btn primary" bindtap="goDraft">✍️ 手动录入该剧目</button>
+    </view>
+  </view>
+
+  <!-- 搜索前：历史 + 热门 -->
+  <block wx:else>
+    <view class="card" wx:if="{{history.length}}">
+      <view class="card-title">最近搜索
+        <view class="spacer"></view>
+        <text class="small dim" bindtap="clearHistory">清空</text>
+      </view>
+      <view class="chips">
+        <view class="chip" wx:for="{{history}}" wx:key="index" data-item="{{item}}" bindtap="onHistoryTap">
+          {{item.name}} <text class="dim small">· {{item.city}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="card">
+      <view class="card-title">热门剧目</view>
+      <view class="chips">
+        <view class="chip hot" wx:for="{{hotKeywords}}" wx:key="*this" data-name="{{item}}" bindtap="onHotTap">{{item}}</view>
+      </view>
+      <view class="divider"></view>
+      <view class="tips">
+        支持「剧名 + 年份 + 城市」精确检索；自动抓取开票时间、抢票平台与场次排期。<br/>
+        未获取到信息时可手动录入，并与大家共享。
+      </view>
+    </view>
+  </block>
+</view>

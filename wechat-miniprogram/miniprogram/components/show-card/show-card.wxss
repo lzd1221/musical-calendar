@@ -1,0 +1,9 @@
+/* components/show-card/show-card.wxss */
+.scard { cursor: pointer; }
+.scard .title { font-size: 32rpx; font-weight: 700; flex: 1; }
+.scard .watched { font-size: 22rpx; color: var(--accent); }
+.scard .pills { margin: 14rpx 0 10rpx; }
+.scard .cd-row { margin-bottom: 12rpx; }
+.scard .cd-label { font-size: 24rpx; color: var(--dim); margin-right: 14rpx; }
+.scard .foot { border-top: 1rpx dashed var(--border); padding-top: 12rpx; }
+.scard .go { color: var(--accent); }

@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "show-card": "/components/show-card/show-card"
+  },
+  "enablePullDownRefresh": true
+}

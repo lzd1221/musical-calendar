@@ -1,0 +1,39 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">📍 默认城市</view>
+    <picker mode="selector" range="{{cityOptions}}" value="{{cityIndex}}" bindchange="onCityChange">
+      <view class="picker">{{city}}<text class="arrow">▾</text></view>
+    </picker>
+    <view class="small dim" style="margin-top:12rpx">搜索时默认使用该城市。</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">⭐ 我的关注（{{watched.length}}）</view>
+    <view wx:if="{{loading}}" class="muted small">加载中…</view>
+    <view wx:elif="{{!watched.length}}" class="muted small">还没有关注剧目，去首页搜索吧。</view>
+    <view class="witem" wx:for="{{watched}}" wx:key="_id" data-id="{{item._id}}" bindtap="goShow">
+      <view class="spacer">
+        <view class="bold">{{item.title}}</view>
+        <view class="dim small">{{item.year || '年份未知'}} · {{item.city || '城市未知'}} · {{item.perfCount}} 场{{item.upcoming ? ' · 🎫 待开票' : ''}}</view>
+      </view>
+      <button class="btn sm danger" catchtap="removeWatch" data-id="{{item._id}}" data-title="{{item.title}}">取关</button>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">🛠 其他</view>
+    <view class="menu" bindtap="goNotify">🔔 提醒中心与即将开票</view>
+    <view class="menu" bindtap="clearHistory">🧹 清空搜索历史</view>
+    <view class="menu" bindtap="showAbout">ℹ️ 关于与免责声明</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">📖 使用提示</view>
+    <view class="tips">
+      · 搜索「剧名 + 年份 + 城市」自动获取开票时间/平台/场次；<br/>
+      · 自动获取失败时手动补录，数据共享给所有用户；<br/>
+      · 关注剧目后，日历页自动排期并提示撞期与上班冲突；<br/>
+      · 订阅提醒为一次性授权，建议开票信息公布后再订阅。
+    </view>
+  </view>
+</view>

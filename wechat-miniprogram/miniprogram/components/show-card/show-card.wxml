@@ -1,0 +1,25 @@
+<view class="scard card" bindtap="onTap">
+  <view class="row">
+    <view class="title">{{show.title}}</view>
+    <view wx:if="{{watched}}" class="watched">⭐ 已关注</view>
+  </view>
+  <view class="pills">
+    <text class="pill">{{show.year || '年份未知'}}</text>
+    <text class="pill">{{show.city || '城市未知'}}</text>
+    <text class="pill p2" wx:if="{{show.platform}}">{{show.platform}}</text>
+    <text class="pill warn" wx:if="{{show.resale}}">二手/比价</text>
+    <text class="pill ok" wx:if="{{show.confirmed}}">自动获取</text>
+    <text class="pill warn" wx:elif="{{show.manual}}">人工补录</text>
+  </view>
+  <view class="row cd-row">
+    <text class="cd-label">开票</text>
+    <text class="countdown {{cdHot ? 'hot' : ''}}">{{cdText}}</text>
+    <view class="spacer"></view>
+    <text class="small dim">{{perfCount}} 场</text>
+  </view>
+  <view class="row foot">
+    <text class="small dim">{{sourceText}}</text>
+    <view class="spacer"></view>
+    <text class="go small">查看详情 ›</text>
+  </view>
+</view>

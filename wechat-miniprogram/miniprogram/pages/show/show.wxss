@@ -1,0 +1,16 @@
+/* pages/show/show.wxss */
+.title { font-size: 38rpx; font-weight: 800; flex: 1; }
+.form .field { margin-bottom: 22rpx; }
+.form .lb { font-size: 24rpx; color: var(--muted); margin-bottom: 10rpx; }
+.form .two { gap: 16rpx; }
+.form .two .field { flex: 1; }
+.textarea { min-height: 160rpx; }
+.tick-row { padding: 6rpx 0; }
+.perf {
+  background: var(--panel2); border: 1rpx solid var(--border);
+  border-radius: 14rpx; padding: 16rpx 20rpx; margin-bottom: 14rpx;
+}
+.perf-date { font-weight: 600; }
+.perf-time { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.conf { color: #ffb3b3; font-size: 26rpx; padding: 6rpx 0; }
+.chan { padding: 8rpx 0; }

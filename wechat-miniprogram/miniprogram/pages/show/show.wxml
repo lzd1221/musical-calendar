@@ -1,0 +1,125 @@
+<view class="page">
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="empty"><view class="big">⏳</view><view class="desc">加载中…</view></view>
+
+  <!-- 草稿模式：手动录入 -->
+  <view wx:elif="{{draft}}" class="card">
+    <view class="card-title">✍️ 手动录入剧目</view>
+    <view class="tips" style="margin-bottom:20rpx">自动获取不到信息？填写已知信息即可。提交后会进入共享数据库，其他用户也能看到并补全。</view>
+    <view class="form">
+      <view class="field"><view class="lb">剧名 *</view>
+        <input class="input" placeholder="如：剧院魅影" value="{{draftTitle}}" bindinput="onDraftInput" /></view>
+      <view class="row two">
+        <view class="field"><view class="lb">城市</view>
+          <input class="input" value="{{draftCity}}" data-field="city" bindinput="onFieldInput" /></view>
+        <view class="field"><view class="lb">年份</view>
+          <input class="input" value="{{draftYear}}" data-field="year" bindinput="onFieldInput" /></view>
+      </view>
+      <view class="field"><view class="lb">主要抢票平台</view>
+        <picker mode="selector" range="{{['大麦','猫眼','保利票务','剧院官网','其他']}}" bindchange="onPlatformChange">
+          <view class="picker">{{f.platform}}<text class="arrow">▾</text></view>
+        </picker>
+      </view>
+      <view class="field"><view class="lb">抢票链接</view>
+        <input class="input" placeholder="https://…" value="{{f.ticketUrl}}" data-field="ticketUrl" bindinput="onFieldInput" /></view>
+      <view class="field"><view class="lb">开票时间（格式：2025-06-01 10:00）</view>
+        <input class="input" placeholder="留空表示未公布" value="{{f.ticketOpenText}}" data-field="ticketOpenText" bindinput="onFieldInput" /></view>
+      <view class="field"><view class="lb">场次排期（每行一场，格式：日期 时间 场馆）</view>
+        <textarea class="input textarea" placeholder="示例：&#10;2025-06-20 19:30 上海文化广场&#10;2025-06-21 14:00 上海文化广场" value="{{f.perfText}}" data-field="perfText" bindinput="onFieldInput"></textarea></view>
+      <button class="btn primary block" bindtap="onDraftSubmit">提交并关注</button>
+    </view>
+  </view>
+
+  <!-- 详情模式 -->
+  <block wx:else>
+    <block wx:if="{{show}}">
+      <view class="card">
+        <view class="row">
+          <view class="title">{{show.title}}</view>
+          <view class="spacer"></view>
+          <button class="btn sm {{watched ? 'danger' : 'primary'}}" bindtap="onToggleWatch">{{watched ? '取消关注' : '⭐ 关注'}}</button>
+        </view>
+        <view class="pills" style="margin-top:14rpx">
+          <text class="pill">{{show.year || '年份未知'}}</text>
+          <text class="pill">{{show.city || '城市未知'}}</text>
+          <text class="pill p2">{{show.platform || '平台未知'}}</text>
+          <text class="pill warn" wx:if="{{show.resale}}">二手/比价</text>
+          <text class="pill ok" wx:if="{{show.confirmed}}">自动获取</text>
+          <text class="pill warn" wx:elif="{{show.manual}}">人工补录</text>
+        </view>
+        <view class="small" style="color:var(--pri2);margin-top:10rpx" wx:if="{{show.resale}}">
+          该剧信息来自二手/比价平台，价格与时效可能滞后，请以官方渠道为准。
+        </view>
+      </view>
+
+      <!-- 抢票信息 -->
+      <view class="card">
+        <view class="card-title">🎫 抢票信息</view>
+        <view class="row tick-row">
+          <view>
+            <view class="dim small">开票时间</view>
+            <view class="countdown {{cd.hot ? 'hot' : ''}}" style="font-size:40rpx">{{cd.text}}</view>
+            <view class="dim small" wx:if="{{show.ticketOpenAt}}">{{show.ticketOpenText}}</view>
+            <view class="small" style="color:var(--pri2)" wx:else>未公布——关注并订阅后，开票前自动提醒</view>
+          </view>
+        </view>
+        <view class="divider"></view>
+        <view class="row">
+          <view class="spacer">
+            <view class="dim small">抢票平台</view>
+            <view class="bold">{{show.platform || '—'}}</view>
+          </view>
+          <button class="btn primary sm" bindtap="onCopyUrl">复制购票链接</button>
+        </view>
+        <view class="tips" style="margin-top:14rpx">
+          微信内无法直接打开外部购票页：复制链接后到微信聊天/系统浏览器打开即可（iOS/Android 通用）。开票提醒请点击下方「订阅提醒」。
+        </view>
+        <button class="btn primary block" style="margin-top:18rpx" bindtap="onSubscribe">
+          🔔 订阅提醒（当前额度 {{subCount}} 次）
+        </button>
+        <view class="small dim" style="margin-top:12rpx">微信规则：娱乐类提醒为一次性订阅，每点一次「允许」= 1 次提醒额度；开票前与开演前自动发送。</view>
+      </view>
+
+      <!-- 场次排期 -->
+      <view class="card">
+        <view class="card-title">📅 场次排期 <text class="hint">{{show.performances.length}} 场</text></view>
+        <view wx:if="{{!show.performances.length}}" class="dim small">暂无场次信息，可提交补录。</view>
+        <view class="perf" wx:for="{{show.performances}}" wx:key="index">
+          <view class="row">
+            <view class="perf-date">{{item.date}} <text class="dim small">{{item.weekday}}</text></view>
+            <view class="spacer"></view>
+            <view class="perf-time">{{item.start || '待定'}}{{item.end ? '–' + item.end : ''}}</view>
+          </view>
+          <view class="dim small">{{item.venue || '场馆待定'}}</view>
+        </view>
+      </view>
+
+      <!-- 撞期提示 -->
+      <view class="card" wx:if="{{conflicts.length}}">
+        <view class="card-title">⚠️ 与已关注剧目撞期</view>
+        <view class="conf" wx:for="{{conflicts}}" wx:key="index">{{item.label}}</view>
+        <view class="small dim">可在「日历」页查看全部排期，合理安排。</view>
+      </view>
+
+      <!-- 其他渠道 -->
+      <view class="card" wx:if="{{show.channels && show.channels.length > 1}}">
+        <view class="card-title">🔗 其他购票渠道</view>
+        <view class="row chan" wx:for="{{show.channels}}" wx:key="index" wx:for-item="ch" wx:if="{{ch.platform !== show.platform}}">
+          <text class="pill p1">{{ch.platform}}</text>
+          <text class="pill warn" wx:if="{{ch.resale}}">二手/比价</text>
+          <text class="pill ok" wx:if="{{ch.official}}">官方渠道</text>
+          <view class="spacer"></view>
+          <text class="small dim" bindtap="onCopyChannel" data-url="{{ch.url}}">复制链接</text>
+        </view>
+      </view>
+
+      <!-- 纠错 -->
+      <view class="card">
+        <view class="card-title">✍️ 信息有误或缺失？</view>
+        <view class="tips">开票时间/链接/场次以官方为准。发现错误可点击下方按钮，或在首页重新搜索。</view>
+        <button class="btn block" style="margin-top:16rpx" bindtap="openNotifyGuide">查看提醒说明与即将开票</button>
+      </view>
+    </block>
+    <view wx:else class="empty"><view class="big">😢</view><view class="desc">未找到该剧目</view></view>
+  </block>
+</view>

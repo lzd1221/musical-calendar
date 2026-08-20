@@ -1,0 +1,5 @@
+/* pages/profile/profile.wxss */
+.witem { display: flex; align-items: center; padding: 16rpx 4rpx; border-bottom: 1rpx dashed var(--border); }
+.witem:last-child { border-bottom: none; }
+.menu { padding: 18rpx 4rpx; border-bottom: 1rpx dashed var(--border); font-size: 28rpx; }
+.menu:last-child { border-bottom: none; }

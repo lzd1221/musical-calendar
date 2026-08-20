@@ -1,0 +1,49 @@
+<view class="page">
+  <view class="card" wx:if="{{ticketSoon.length}}">
+    <view class="card-title">🎫 即将开票</view>
+    <view class="tsoon" wx:for="{{ticketSoon}}" wx:key="showId" data-id="{{item.showId}}" bindtap="goShow">
+      <view class="spacer">
+        <view class="bold">{{item.title}}</view>
+        <view class="dim small">{{item.text}}</view>
+      </view>
+      <view class="countdown {{item.cd.hot ? 'hot' : ''}}">{{item.cd.text}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="row month-head">
+      <button class="btn sm" bindtap="prevMonth">‹</button>
+      <view class="month-label">{{label}}</view>
+      <button class="btn sm" bindtap="nextMonth">›</button>
+      <button class="btn sm ghost" bindtap="backToday">本月</button>
+    </view>
+    <view class="cal-grid">
+      <view class="dow" wx:for="{{['一','二','三','四','五','六','日']}}" wx:key="*this" wx:for-item="w">{{w}}</view>
+      <view class="cell {{c.day ? '' : 'empty-cell'}} {{c.isToday ? 'today' : ''}}"
+            wx:for="{{cells}}" wx:key="index" wx:for-item="c">
+        <block wx:if="{{c.day}}">
+          <view class="day-num">{{c.dayNum}}</view>
+          <view class="mini {{p.conflict ? 'conf' : ''}} {{p.work ? 'work' : ''}}"
+                wx:for="{{c.perfs}}" wx:for-item="p" wx:key="index"
+                data-id="{{p.show._id}}" bindtap="tapPerf">
+            {{p.perf.start}} {{p.show.title}}
+          </view>
+        </block>
+      </view>
+    </view>
+    <view class="legend" style="margin-top:16rpx">
+      <text class="leg conf">■ 撞期</text>
+      <text class="leg work">■ 与上班时间重叠</text>
+      <text class="leg dim">点场次看详情</text>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{conflictList.length}}">
+    <view class="card-title">⚠️ 冲突提示（{{conflictList.length}}）</view>
+    <view class="conf-item" wx:for="{{conflictList}}" wx:key="index">{{item}}</view>
+  </view>
+
+  <view class="card" wx:else>
+    <view class="muted small">本月暂无冲突 🎉 已关注剧目的全部场次都互不撞期。</view>
+  </view>
+</view>

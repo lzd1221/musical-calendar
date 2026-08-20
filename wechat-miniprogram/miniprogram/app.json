@@ -1,0 +1,30 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/calendar/calendar",
+    "pages/profile/profile",
+    "pages/show/show",
+    "pages/notify/notify"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#12101e",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "音乐剧助手",
+    "backgroundColor": "#12101e",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#8f8aa8",
+    "selectedColor": "#f2b24c",
+    "backgroundColor": "#1b1730",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "找剧" },
+      { "pagePath": "pages/calendar/calendar", "text": "日历" },
+      { "pagePath": "pages/profile/profile", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

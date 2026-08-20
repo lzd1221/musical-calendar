@@ -1,0 +1,3 @@
+/* pages/notify/notify.wxss */
+.tick { display: flex; align-items: center; padding: 14rpx 4rpx; border-bottom: 1rpx dashed var(--border); }
+.tick:last-child { border-bottom: none; }

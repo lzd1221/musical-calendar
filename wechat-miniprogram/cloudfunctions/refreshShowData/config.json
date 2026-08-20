@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "openapi": [
+      "subscribeMessage.send"
+    ]
+  },
+  "triggers": [
+    {
+      "name": "refresh-timer",
+      "type": "timer",
+      "config": "0 */5 * * * * *"
+    }
+  ]
+}

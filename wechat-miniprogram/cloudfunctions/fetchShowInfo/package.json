@@ -1,0 +1,9 @@
+{
+  "name": "fetchShowInfo",
+  "version": "1.0.0",
+  "description": "按 剧名-年份-城市 从多票务平台自动获取剧目信息（开票时间/抢票链接/场次）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

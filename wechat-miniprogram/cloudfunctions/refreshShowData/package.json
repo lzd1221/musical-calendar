@@ -1,0 +1,9 @@
+{
+  "name": "refreshShowData",
+  "version": "1.0.0",
+  "description": "定时刷新已关注剧目数据并触发开票/开演提醒",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
