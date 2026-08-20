@@ -27,6 +27,29 @@
 
   /* 搜索 */
   .search-row{display:flex;gap:10px;flex-wrap:wrap}
+  .search-main .kw-wrap{position:relative}
+  .search-main input[type=text]{width:100%}
+  .search-sub{margin-top:12px}
+  .search-sub .row-sub{display:flex;gap:10px;margin-top:12px;align-items:center}
+  .search-sub .row-sub select{flex:1}
+  .city-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .city-chip{
+    padding:9px 20px;border-radius:999px;border:1px solid var(--border);
+    background:var(--panel2);color:var(--muted);cursor:pointer;font-size:13.5px;transition:.12s;
+  }
+  .city-chip:hover{border-color:var(--accent);color:var(--text)}
+  .city-chip.on{background:rgba(242,178,76,.15);border-color:var(--accent);color:var(--accent);font-weight:600}
+  /* 剧名联想下拉 */
+  .kw-drop{
+    position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    background:var(--panel2);border:1px solid var(--border);border-radius:12px;
+    max-height:340px;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+  .kw-drop .item{padding:11px 16px;font-size:14.5px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px dashed rgba(51,44,85,.6)}
+  .kw-drop .item:last-child{border-bottom:none}
+  .kw-drop .item:hover,.kw-drop .item.active{background:rgba(242,178,76,.13)}
+  .kw-drop .item .tag{color:var(--dim);font-size:12px;margin-left:auto;white-space:nowrap}
+  .kw-drop .empty{padding:14px;color:var(--dim);font-size:13px;text-align:center}
   .search-row input[type=text]{flex:1;min-width:200px}
   input,select{
     background:var(--panel2);border:1px solid var(--border);color:var(--text);
@@ -112,24 +135,23 @@
 
   <!-- 搜索 -->
   <div class="card">
-    <div class="search-row">
-      <input type="text" id="kw" placeholder="输入音乐剧名称，如：剧院魅影" list="hotList">
-      <datalist id="hotList">
-        <option>剧院魅影</option><option>悲惨世界</option><option>汉密尔顿</option>
-        <option>摇滚莫扎特</option><option>巴黎圣母院</option><option>基督山伯爵</option>
-      </datalist>
-      <select id="city">
-        <option>上海</option><option>北京</option><option>广州</option><option>深圳</option>
-        <option>杭州</option><option>南京</option><option>苏州</option><option>成都</option>
-        <option>武汉</option><option>西安</option><option>长沙</option><option>其他</option>
-      </select>
-      <select id="year">
-        <option value="">不限年份</option>
-        <option value="2026">2026</option>
-        <option value="2025" selected>2025</option>
-        <option value="2024">2024</option>
-      </select>
-      <button class="btn primary" id="btnSearch">🔍 搜索</button>
+    <div class="search-main">
+      <div class="kw-wrap">
+        <input type="text" id="kw" placeholder="输入剧名（输入一个字即可联想，如：剧）" autocomplete="off">
+        <div id="kw-drop" class="kw-drop hidden"></div>
+      </div>
+      <div class="search-sub">
+        <div class="city-chips" id="cityChips"></div>
+        <div class="row-sub">
+          <select id="year">
+            <option value="">不限年份</option>
+            <option value="2026">2026</option>
+            <option value="2025" selected>2025</option>
+            <option value="2024">2024</option>
+          </select>
+          <button class="btn primary" id="btnSearch">🔍 搜索</button>
+        </div>
+      </div>
     </div>
     <div id="srcStatus" class="src-status"></div>
   </div>
@@ -156,7 +178,7 @@
   <footer>
     数据由本地 Node 服务（server.js）真实抓取：票务平台接口直连 + 360/必应搜索兜底。<br>
     票务平台普遍存在反爬限制，直连失败属正常现象——此时会给出网页参考与手动录入兜底；开票时间以官方渠道为准。<br>
-    使用前请先启动服务：<code>node web-version/server.js</code>，再访问 <code>http://localhost:8765</code>。
+    使用前请先启动服务：<code>node web-version/server.js</code>，再访问 <code>http://localhost:8878</code>。
   </footer>
 </div>
 
@@ -165,6 +187,109 @@
 const $ = s => document.querySelector(s);
 const ESC = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const REC_KEY = 'web-version-records';
+const CITY_KEY = 'web-version-city';
+
+/* ---- 剧名词库（联想用，可自行增补）---- */
+const SHOWS = [
+  { n: '剧院魅影', c: '上海' }, { n: '剧院魅影:真爱永恒', c: '上海' }, { n: '悲惨世界', c: '上海' },
+  { n: '汉密尔顿', c: '上海' }, { n: '摇滚莫扎特', c: '上海' }, { n: '巴黎圣母院', c: '上海' },
+  { n: '罗密欧与朱丽叶', c: '上海' }, { n: '基督山伯爵', c: '上海' }, { n: '道林格雷的画像', c: '上海' },
+  { n: '桑塔露琪亚', c: '上海' }, { n: '粉丝来信', c: '上海' }, { n: '献给阿尔吉侬的花束', c: '上海' },
+  { n: '我的遗愿清单', c: '上海' }, { n: '也许美好结局', c: '上海' }, { n: '阿波罗尼亚', c: '上海' },
+  { n: '马不停蹄的忧伤', c: '上海' }, { n: '人间失格', c: '上海' }, { n: '伪装者', c: '上海' },
+  { n: '赵氏孤儿', c: '上海' }, { n: '觉醒年代', c: '北京' }, { n: '青春禁忌游戏', c: '北京' },
+  { n: '猎罪图鉴', c: '上海' }, { n: '沉默的真相', c: '上海' }, { n: '隐秘的角落', c: '上海' },
+  { n: '白夜行', c: '上海' }, { n: '解忧杂货店', c: '上海' }, { n: '面试', c: '上海' },
+  { n: '烟雾', c: '上海' }, { n: '灵魂摆渡之永生', c: '北京' }, { n: '春之觉醒', c: '上海' },
+  { n: '近乎正常', c: '上海' }, { n: '长靴皇后', c: '上海' }, { n: '妈妈咪呀', c: '上海' },
+  { n: '狮子王', c: '上海' }, { n: '猫', c: '上海' }, { n: '芝加哥', c: '北京' },
+  { n: '吉屋出租', c: '上海' }, { n: '玛蒂尔达', c: '上海' }, { n: '音乐之声', c: '上海' },
+  { n: '美女与野兽', c: '上海' }, { n: '阿拉丁', c: '上海' }, { n: '冰雪奇缘', c: '上海' },
+  { n: '泰坦尼克号', c: '上海' }, { n: '德古拉', c: '上海' }, { n: '伊丽莎白', c: '上海' },
+  { n: '莫扎特', c: '上海' }, { n: '蝴蝶夫人', c: '上海' }, { n: '图兰朵', c: '北京' },
+  { n: '永不消逝的电波', c: '上海' }, { n: '只此青绿', c: '上海' }, { n: '红楼梦', c: '上海' },
+  { n: '朱鹮', c: '上海' }, { n: '天鹅湖', c: '上海' }, { n: '胡桃夹子', c: '北京' },
+  { n: '卡门', c: '北京' }, { n: '红色娘子军', c: '北京' }, { n: '霸王别姬', c: '北京' },
+  { n: '茶馆', c: '北京' }, { n: '雷雨', c: '北京' }, { n: '暗恋桃花源', c: '上海' },
+  { n: '恋爱的犀牛', c: '北京' }, { n: '如梦之梦', c: '北京' }, { n: '四世同堂', c: '北京' },
+  { n: '北京人', c: '北京' }, { n: '窝头会馆', c: '北京' }, { n: '惊梦', c: '北京' },
+  { n: '戏台', c: '北京' }, { n: '蒋公的面子', c: '南京' }, { n: '繁花', c: '上海' },
+  { n: '长恨歌', c: '上海' }, { n: '海上花', c: '上海' }, { n: '断金', c: '北京' },
+  { n: '苏东坡', c: '北京' }, { n: '杜甫', c: '北京' }, { n: '李白', c: '北京' },
+  { n: '咏春', c: '广州' }, { n: '沙湾往事', c: '广州' }, { n: '丝路花雨', c: '西安' },
+  { n: '大红灯笼高高挂', c: '北京' }, { n: 'The Phantom of the Opera', c: '上海' },
+  { n: 'Les Miserables', c: '上海' }, { n: 'Hamilton', c: '上海' }, { n: 'Wicked', c: '上海' },
+  { n: 'Cats', c: '上海' }, { n: 'Chicago', c: '北京' }, { n: 'Mamma Mia', c: '上海' },
+  { n: 'The Lion King', c: '上海' }
+];
+const CITIES = ['上海','北京','广州','深圳','杭州','南京','苏州','成都','重庆','武汉','西安','长沙','天津','青岛','其他'];
+
+/* ---- 城市点选 ---- */
+let citySel = (() => { try { return localStorage.getItem(CITY_KEY) || '上海'; } catch (e) { return '上海'; } })();
+function renderCityChips(){
+  $('#cityChips').innerHTML = CITIES.map(c =>
+    '<span class="city-chip' + (c === citySel ? ' on' : '') + '" data-city="' + c + '">' + c + '</span>'
+  ).join('');
+}
+$('#cityChips').addEventListener('click', e => {
+  const chip = e.target.closest && e.target.closest('.city-chip');
+  if (!chip) return;
+  citySel = chip.dataset.city;
+  try { localStorage.setItem(CITY_KEY, citySel); } catch (err) {}
+  renderCityChips();
+});
+
+/* ---- 剧名联想（输入一个字即出下拉）---- */
+let kwActive = -1;      // 当前高亮项
+let kwItems = [];       // 当前过滤结果
+let kwTimer = null;
+const kwInput = $('#kw');
+const kwDrop = $('#kw-drop');
+
+function norm(s){ return String(s || '').toLowerCase(); }
+function filterShows(q){
+  q = norm(q.trim());
+  if (!q) return [];
+  return SHOWS.filter(s => norm(s.n).indexOf(q) > -1 || norm(s.c).indexOf(q) > -1).slice(0, 8);
+}
+function renderKwDrop(){
+  if (!kwItems.length) { kwDrop.classList.add('hidden'); return; }
+  kwDrop.innerHTML = kwItems.map((s, i) =>
+    '<div class="item' + (i === kwActive ? ' active' : '') + '" data-i="' + i + '">' + ESC(s.n) +
+    (s.c ? '<span class="tag">' + ESC(s.c) + '</span>' : '') + '</div>'
+  ).join('');
+  kwDrop.classList.remove('hidden');
+}
+function hideKwDrop(){ kwDrop.classList.add('hidden'); kwActive = -1; }
+function onKwInput(){
+  clearTimeout(kwTimer);
+  kwTimer = setTimeout(() => {
+    kwItems = filterShows(kwInput.value);
+    kwActive = kwItems.length ? 0 : -1;
+    renderKwDrop();
+  }, 120);
+}
+function pickKw(i){
+  const s = kwItems[i];
+  if (!s) return;
+  kwInput.value = s.n;
+  hideKwDrop();
+  doSearch();
+}
+kwInput.addEventListener('input', onKwInput);
+kwInput.addEventListener('keydown', e => {
+  if (!kwItems.length) { if (e.key === 'Enter') doSearch(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); kwActive = (kwActive + 1) % kwItems.length; renderKwDrop(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); kwActive = (kwActive - 1 + kwItems.length) % kwItems.length; renderKwDrop(); }
+  else if (e.key === 'Enter') { e.preventDefault(); pickKw(kwActive >= 0 ? kwActive : 0); }
+  else if (e.key === 'Escape') { hideKwDrop(); }
+});
+kwDrop.addEventListener('mousedown', e => {
+  const item = e.target.closest && e.target.closest('.item');
+  if (item) pickKw(+item.dataset.i);
+});
+kwInput.addEventListener('blur', () => setTimeout(hideKwDrop, 150));
+renderCityChips();
 
 function fmtDT(ts){ if(!ts) return '未公布'; const d=new Date(ts); return (d.getMonth()+1)+'月'+d.getDate()+'日 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
 function cdText(ts){ if(!ts) return '未公布'; const ms=ts-Date.now(); if(ms<=0) return '已开票'; const s=Math.floor(ms/1000); const d=Math.floor(s/86400), h=Math.floor((s%86400)/3600), m=Math.floor((s%3600)/60); return d>0 ? d+'天 '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0') : String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
@@ -237,14 +362,14 @@ async function doSearch(){
   $('#srcStatus').innerHTML = '<span class="src-chip loading"><span class="dot"></span>正在请求 大麦/猫眼/保利/二手平台 + 360搜索/必应 + 深度解析…（约 8-15 秒）</span>';
   $('#resultArea').innerHTML = '';
   try{
-    const qs = new URLSearchParams({ name, city: $('#city').value, year: $('#year').value });
+    const qs = new URLSearchParams({ name, city: citySel, year: $('#year').value });
     const r = await fetch('/api/search?' + qs.toString());
     const res = await r.json();
     renderSrcStatus(res.status);
     renderResults(res);
   }catch(e){
     $('#srcStatus').innerHTML = '';
-    $('#resultArea').innerHTML = '<div class="card tips-box">⚠️ 请求失败：'+ESC(e.message)+'<br>请确认本地服务已启动（node web-version/server.js）且本页是从 http://localhost:8765 打开的。</div>';
+    $('#resultArea').innerHTML = '<div class="card tips-box">⚠️ 请求失败：'+ESC(e.message)+'<br>请确认本地服务已启动（node web-version/server.js）且本页是从 http://localhost:8878 打开的。</div>';
   }finally{
     btn.disabled = false; btn.textContent = '🔍 搜索';
   }
@@ -270,7 +395,6 @@ function addRecord(){
 }
 
 $('#btnSearch').addEventListener('click', doSearch);
-$('#kw').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
 $('#btnManual').addEventListener('click', addRecord);
 $('#records').addEventListener('click', e=>{
   const del = e.target.dataset && e.target.dataset.del;
