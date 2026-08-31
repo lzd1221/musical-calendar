@@ -43,5 +43,36 @@ async function getText(url, options) {
   const r = await request(url, options);
   return r.body;
 }
+// POST JSON，返回解析后的 JSON（供需要 POST 的接口使用）
+async function postJSON(url, body, options) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const mod = u.protocol === 'https:' ? https : http;
+    const t = (options && options.timeoutMs) || 10000;
+    const data = JSON.stringify(body);
+    const req = mod.request({
+      host: u.host, path: u.pathname + u.search, method: 'POST',
+      headers: Object.assign({
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Content-Length': Buffer.byteLength(data),
+        'User-Agent': UA,
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9'
+      }, (options && options.headers) || {})
+    }, res => {
+      let buf = '';
+      res.setEncoding('utf8');
+      res.on('data', c => { buf += c; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) return reject(new Error('HTTP ' + res.statusCode));
+        try { resolve(JSON.parse(buf)); } catch (e) { reject(new Error('JSON 解析失败')); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(t, () => req.destroy(new Error('timeout ' + url)));
+    req.write(data);
+    req.end();
+  });
+}
 
-module.exports = { request, getJSON, getText, UA };
+module.exports = { request, getJSON, getText, postJSON, UA };
