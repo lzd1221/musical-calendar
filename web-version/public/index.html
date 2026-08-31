@@ -81,6 +81,30 @@
   .form-grid .full{grid-column:1/-1}
   .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
   .modal .actions .btn{width:auto}
+  /* 搜索视图 */
+  .search-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .kw-wrap{position:relative;flex:1;min-width:220px}
+  .kw-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;background:var(--panel2);border:1px solid var(--border);border-radius:12px;max-height:320px;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+  .kw-drop .item{padding:11px 16px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px dashed rgba(51,44,85,.6)}
+  .kw-drop .item:last-child{border-bottom:none}
+  .kw-drop .item:hover,.kw-drop .item.active{background:rgba(242,178,76,.13)}
+  .kw-drop .item .tag{color:var(--dim);font-size:12px;margin-left:auto}
+  .city-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .city-chip{padding:7px 16px;border-radius:999px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);cursor:pointer;font-size:13px}
+  .city-chip.on{background:rgba(242,178,76,.15);border-color:var(--accent);color:var(--accent);font-weight:600}
+  .src-status{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .src-chip{font-size:11.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+  .src-chip.ok{color:var(--ok);border-color:rgba(81,207,102,.5)}
+  .src-chip.fail{color:var(--danger);border-color:rgba(255,107,107,.5)}
+  .result-card{border:1px solid var(--border);border-radius:12px;background:var(--panel2);padding:14px;margin-top:10px}
+  .result-card .t{font-size:15px;font-weight:700}
+  .result-card .pills{margin:6px 0}
+  .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);color:var(--muted);margin-right:5px;margin-top:3px}
+  .pill.plat{color:var(--accent);border-color:rgba(242,178,76,.5)}
+  .deep-info{margin-top:6px;padding:8px 10px;background:rgba(81,207,102,.06);border:1px solid rgba(81,207,102,.25);border-radius:8px;font-size:12.5px}
+  .deep-info .di-open{color:var(--ok);font-weight:700}
+  .result-card .meta{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .result-card .acts{margin-top:10px}
   @media (max-width:640px){.form-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -116,6 +140,7 @@
     <h1>🎭 我的日历</h1>
     <span class="user" id="welcomeUser"></span>
     <div class="spacer"></div>
+    <button class="btn sm" id="btnSearch">🔍 搜索剧目</button>
     <button class="btn sm primary" id="btnAdd">＋ 添加计划</button>
     <button class="btn sm" id="btnLogout">退出</button>
   </div>
@@ -144,6 +169,28 @@
     <h2>📋 我的计划 <span class="hint">点击状态切换：待抢 / 已抢 / 已购 / 放弃</span></h2>
     <div id="planList"></div>
   </div>
+</div>
+
+<!-- 搜索视图 -->
+<div id="searchView" class="wrap hidden">
+  <div class="topbar">
+    <h1>🔍 搜索剧目</h1>
+    <div class="spacer"></div>
+    <button class="btn sm" id="btnBackCal">← 返回日历</button>
+  </div>
+  <div class="card">
+    <div class="search-bar">
+      <div class="kw-wrap">
+        <input type="text" id="kw" placeholder="输入剧名（输入一个字即联想）" autocomplete="off">
+        <div id="kw-drop" class="kw-drop hidden"></div>
+      </div>
+      <select id="year"><option value="">不限年份</option><option value="2026">2026</option><option value="2025" selected>2025</option><option value="2024">2024</option></select>
+      <button class="btn primary sm" id="btnDoSearch">搜索</button>
+    </div>
+    <div class="city-chips" id="cityChips"></div>
+    <div class="src-status" id="srcStatus"></div>
+  </div>
+  <div id="searchResults"></div>
 </div>
 
 <!-- 添加计划弹层 -->
@@ -186,6 +233,168 @@ async function api(path, method, body) {
 let ME = null;
 let plans = [];
 let calOffset = 0; // 相对当前月的偏移
+
+/* ---------- 剧名词库与联想 ---------- */
+const SHOWS = [
+  { n: '剧院魅影', c: '上海' }, { n: '剧院魅影:真爱永恒', c: '上海' }, { n: '悲惨世界', c: '上海' },
+  { n: '汉密尔顿', c: '上海' }, { n: '摇滚莫扎特', c: '上海' }, { n: '巴黎圣母院', c: '上海' },
+  { n: '罗密欧与朱丽叶', c: '上海' }, { n: '基督山伯爵', c: '上海' }, { n: '道林格雷的画像', c: '上海' },
+  { n: '桑塔露琪亚', c: '上海' }, { n: '粉丝来信', c: '上海' }, { n: '献给阿尔吉侬的花束', c: '上海' },
+  { n: '我的遗愿清单', c: '上海' }, { n: '也许美好结局', c: '上海' }, { n: '阿波罗尼亚', c: '上海' },
+  { n: '人间失格', c: '上海' }, { n: '伪装者', c: '上海' }, { n: '赵氏孤儿', c: '上海' },
+  { n: '觉醒年代', c: '北京' }, { n: '猎罪图鉴', c: '上海' }, { n: '沉默的真相', c: '上海' },
+  { n: '白夜行', c: '上海' }, { n: '解忧杂货店', c: '上海' }, { n: '面试', c: '上海' },
+  { n: '春之觉醒', c: '上海' }, { n: '近乎正常', c: '上海' }, { n: '妈妈咪呀', c: '上海' },
+  { n: '狮子王', c: '上海' }, { n: '猫', c: '上海' }, { n: '芝加哥', c: '北京' },
+  { n: '吉屋出租', c: '上海' }, { n: '玛蒂尔达', c: '上海' }, { n: '音乐之声', c: '上海' },
+  { n: '美女与野兽', c: '上海' }, { n: '冰雪奇缘', c: '上海' }, { n: '泰坦尼克号', c: '上海' },
+  { n: '伊丽莎白', c: '上海' }, { n: '莫扎特', c: '上海' }, { n: '蝴蝶夫人', c: '上海' },
+  { n: '图兰朵', c: '北京' }, { n: '永不消逝的电波', c: '上海' }, { n: '只此青绿', c: '上海' },
+  { n: '红楼梦', c: '上海' }, { n: '朱鹮', c: '上海' }, { n: '天鹅湖', c: '上海' },
+  { n: '胡桃夹子', c: '北京' }, { n: '卡门', c: '北京' }, { n: '霸王别姬', c: '北京' },
+  { n: '茶馆', c: '北京' }, { n: '雷雨', c: '北京' }, { n: '暗恋桃花源', c: '上海' },
+  { n: '恋爱的犀牛', c: '北京' }, { n: '如梦之梦', c: '北京' }, { n: '繁花', c: '上海' },
+  { n: '长恨歌', c: '上海' }, { n: '苏东坡', c: '北京' }, { n: '杜甫', c: '北京' },
+  { n: '咏春', c: '广州' }, { n: '沙湾往事', c: '广州' }, { n: '丝路花雨', c: '西安' },
+  { n: 'The Phantom of the Opera', c: '上海' }, { n: 'Hamilton', c: '上海' }, { n: 'Wicked', c: '上海' }
+];
+const CITIES = ['上海','北京','广州','深圳','杭州','南京','苏州','成都','重庆','武汉','西安','长沙','天津','青岛','其他'];
+let citySel = '上海';
+function normStr(s){ return String(s || '').toLowerCase(); }
+function renderCityChips(){
+  $('#cityChips').innerHTML = CITIES.map(c => '<span class="city-chip' + (c === citySel ? ' on' : '') + '" data-city="' + c + '">' + c + '</span>').join('');
+}
+$('#cityChips').addEventListener('click', e => {
+  const chip = e.target.closest && e.target.closest('.city-chip');
+  if (!chip) return;
+  citySel = chip.dataset.city; renderCityChips();
+});
+
+let kwItems = [], kwActive = -1, kwTimer = null;
+function filterShows(q){ q = normStr(q.trim()); if (!q) return []; return SHOWS.filter(s => normStr(s.n).indexOf(q) > -1 || normStr(s.c).indexOf(q) > -1).slice(0, 8); }
+function renderKwDrop(){
+  if (!kwItems.length) { $('#kw-drop').classList.add('hidden'); return; }
+  $('#kw-drop').innerHTML = kwItems.map((s, i) => '<div class="item' + (i === kwActive ? ' active' : '') + '" data-i="' + i + '">' + ESC(s.n) + '<span class="tag">' + ESC(s.c) + '</span></div>').join('');
+  $('#kw-drop').classList.remove('hidden');
+}
+function hideKw(){ $('#kw-drop').classList.add('hidden'); kwActive = -1; }
+$('#kw').addEventListener('input', () => {
+  clearTimeout(kwTimer);
+  kwTimer = setTimeout(() => { kwItems = filterShows($('#kw').value); kwActive = kwItems.length ? 0 : -1; renderKwDrop(); }, 120);
+});
+$('#kw').addEventListener('keydown', e => {
+  if (!kwItems.length) { if (e.key === 'Enter') doSearch(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); kwActive = (kwActive + 1) % kwItems.length; renderKwDrop(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); kwActive = (kwActive - 1 + kwItems.length) % kwItems.length; renderKwDrop(); }
+  else if (e.key === 'Enter') { e.preventDefault(); pickKw(kwActive >= 0 ? kwActive : 0); }
+  else if (e.key === 'Escape') hideKw();
+});
+$('#kw-drop').addEventListener('mousedown', e => {
+  const item = e.target.closest && e.target.closest('.item');
+  if (item) pickKw(+item.dataset.i);
+});
+function pickKw(i){ const s = kwItems[i]; if (!s) return; $('#kw').value = s.n; hideKw(); }
+$('#btnDoSearch').addEventListener('click', doSearch);
+
+/* ---------- 搜索 ---------- */
+async function doSearch(){
+  const name = $('#kw').value.trim();
+  if (!name) { alert('请输入剧名'); return; }
+  $('#srcStatus').innerHTML = '<span class="src-chip">正在请求多平台 + 搜索…（约 5-10 秒）</span>';
+  $('#searchResults').innerHTML = '';
+  try {
+    const qs = new URLSearchParams({ name, city: citySel, year: $('#year').value });
+    const r = await api('/api/search?' + qs.toString());
+    if (r.status === 200) {
+      renderSrcStatus(r.data.status);
+      renderSearchResults(r.data);
+    } else {
+      $('#srcStatus').innerHTML = '';
+      $('#searchResults').innerHTML = '<div class="card empty">' + ESC(r.data.msg || '搜索失败') + '</div>';
+    }
+  } catch (e) {
+    $('#srcStatus').innerHTML = '';
+    $('#searchResults').innerHTML = '<div class="card empty">搜索出错：' + ESC(e.message) + '</div>';
+  }
+}
+function renderSrcStatus(status){
+  if (!status || !status.length) { $('#srcStatus').innerHTML = ''; return; }
+  $('#srcStatus').innerHTML = status.map(s => {
+    const cls = s.ok ? 'ok' : 'fail';
+    const label = s.ok ? (s.name + ' ✓' + (s.count ? '(' + s.count + ')' : '')) : (s.name + ' ⛔');
+    return '<span class="src-chip ' + cls + '">' + ESC(label) + '</span>';
+  }).join('');
+}
+function toDTLocal(text){
+  if (!text) return '';
+  let t = String(text).replace(/年/g, '-').replace(/月/g, '-').replace(/日/g, '').replace(/\./g, '-').trim();
+  if (!/\d{4}/.test(t)) { t = new Date().getFullYear() + '-' + t; }
+  const ts = Date.parse(t.replace(' ', 'T'));
+  if (isNaN(ts)) return '';
+  const d = new Date(ts);
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+function cleanTitle(s){ return String(s || '').replace(/[《》「」]/g, '').replace(/\s+/g, ' ').trim(); }
+
+function renderSearchResults(res){
+  let html = '';
+  // 平台命中
+  if (res.list && res.list.length) {
+    for (const s of res.list) {
+      const perf = (s.performances && s.performances[0]) || {};
+      html += '<div class="card result-card"><div class="t">' + ESC(s.title) + '</div>' +
+        '<div class="pills"><span class="pill">' + ESC(s.city || '') + '</span><span class="pill plat">' + ESC(s.platform || '') + '</span></div>' +
+        '<div class="meta">🎫 开票：' + (s.ticketOpenText ? ESC(s.ticketOpenText) : '未公布') + '</div>' +
+        (perf.date ? '<div class="meta">🎭 场次：' + ESC(perf.date) + (perf.start ? ' ' + ESC(perf.start) : '') + (perf.venue ? ' · ' + ESC(perf.venue) : '') + '</div>' : '') +
+        '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: s.title, city: s.city, open: s.ticketOpenText, date: perf.date, time: perf.start, venue: perf.venue }) + '">＋ 加入日历</button></div></div>';
+    }
+  }
+  // 参考网页（含深度解析）
+  if (res.bing && res.bing.length) {
+    html += '<div class="card" style="margin-top:14px"><h2>🔍 搜索结果参考 <span class="hint">' + ESC(res.searchSrc || '') + '，点「加入日历」自动带出已解析信息</span></h2>';
+    for (const b of res.bing) {
+      const d = b.deep || {};
+      html += '<div class="result-card"><div class="t">' + ESC(cleanTitle(b.title)) + '</div>' +
+        '<div class="meta"><a style="color:var(--info);text-decoration:none" target="_blank" rel="noopener" href="' + ESC(b.url) + '">' + ESC(b.url.slice(0, 70)) + ' ↗</a></div>';
+      if (d.openText || d.venue || (d.showTimes && d.showTimes.length)) {
+        html += '<div class="deep-info">';
+        if (d.openText) html += '<span class="di-open">🎫 ' + ESC(d.openText) + '</span> ';
+        if (d.venue) html += '<span>📍 ' + ESC(d.venue) + '</span> ';
+        if (d.showTimes && d.showTimes.length) html += '<span>🎭 ' + ESC(d.showTimes[0].date) + (d.showTimes[0].start ? ' ' + ESC(d.showTimes[0].start) : '') + '</span>';
+        html += '</div>';
+      }
+      const st0 = (d.showTimes && d.showTimes[0]) || {};
+      html += '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: cleanTitle(b.title), city: citySel, open: d.openText, date: st0.date, time: st0.start, venue: d.venue }) + '">＋ 加入日历</button></div></div>';
+    }
+    html += '</div>';
+  }
+  if (!html) html = '<div class="card empty">未搜索到结果，可返回日历手动「＋ 添加计划」</div>';
+  $('#searchResults').innerHTML = html;
+}
+function base64Item(obj){
+  return encodeURIComponent(JSON.stringify(obj));
+}
+$('#searchResults').addEventListener('click', e => {
+  const b = e.target.closest('[data-join]');
+  if (!b) return;
+  let obj = {};
+  try { obj = JSON.parse(decodeURIComponent(b.dataset.join)); } catch (e) {}
+  joinCalendar(obj);
+});
+function joinCalendar(o){
+  $('#f-name').value = o.title || '';
+  $('#f-city').value = o.city || '';
+  $('#f-open').value = toDTLocal(o.open);
+  $('#f-date').value = o.date || '';
+  $('#f-time').value = o.time || '';
+  $('#f-venue').value = o.venue || '';
+  $('#f-note').value = '';
+  $('#addOverlay').classList.remove('hidden');
+}
+
+/* ---------- 视图切换 ---------- */
+$('#btnSearch').onclick = () => { $('#appView').classList.add('hidden'); $('#searchView').classList.remove('hidden'); };
+$('#btnBackCal').onclick = () => { $('#appView').classList.remove('hidden'); $('#searchView').classList.add('hidden'); };
 
 /* ---------- 登录/注册 ---------- */
 function switchAuth(mode) {
@@ -308,6 +517,8 @@ $('#btnSave').onclick = async () => {
     $('#addOverlay').classList.add('hidden');
     $('#f-name').value = ''; $('#f-open').value = ''; $('#f-date').value = ''; $('#f-time').value = ''; $('#f-venue').value = ''; $('#f-note').value = '';
     await loadPlans();
+    // 保存后回到日历视图
+    $('#appView').classList.remove('hidden'); $('#searchView').classList.add('hidden');
   } else { alert(r.data.msg || '保存失败'); }
 };
 
@@ -341,6 +552,7 @@ $('#btnLogout').onclick = async () => { await api('/api/logout', 'POST'); locati
     $('#welcomeUser').textContent = '你好，' + ME;
     $('#authView').classList.add('hidden');
     $('#appView').classList.remove('hidden');
+    renderCityChips();
     await loadPlans();
   } else {
     $('#authView').classList.remove('hidden');
