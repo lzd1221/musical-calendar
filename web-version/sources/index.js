@@ -3,10 +3,11 @@ const damai = require('./damai.js');
 const maoyan = require('./maoyan.js');
 const polly = require('./polly.js');
 const resale = require('./resale.js');
+const shct = require('./shct.js');
 const so360 = require('./so360.js');
 const bing = require('./bing.js');
 
-const REGISTRY = [damai, maoyan, polly, resale];
+const REGISTRY = [damai, maoyan, polly, resale, shct];
 
 // 并发运行平台源；单个源失败不影响其他源
 async function runAll(params) {

@@ -342,10 +342,13 @@ function renderSearchResults(res){
   if (res.list && res.list.length) {
     for (const s of res.list) {
       const perf = (s.performances && s.performances[0]) || {};
+      const perfCount = (s.performances || []).length;
       html += '<div class="card result-card"><div class="t">' + ESC(s.title) + '</div>' +
-        '<div class="pills"><span class="pill">' + ESC(s.city || '') + '</span><span class="pill plat">' + ESC(s.platform || '') + '</span></div>' +
-        '<div class="meta">🎫 开票：' + (s.ticketOpenText ? ESC(s.ticketOpenText) : '未公布') + '</div>' +
-        (perf.date ? '<div class="meta">🎭 场次：' + ESC(perf.date) + (perf.start ? ' ' + ESC(perf.start) : '') + (perf.venue ? ' · ' + ESC(perf.venue) : '') + '</div>' : '') +
+        '<div class="pills"><span class="pill">' + ESC(s.city || '') + '</span><span class="pill plat">' + ESC(s.platform || '') + '</span>' +
+        (s.genre ? '<span class="pill">' + ESC(s.genre) + '</span>' : '') + '</div>' +
+        '<div class="meta">🎫 开票：' + (s.ticketOpenText ? ESC(s.ticketOpenText) : '未公布') +
+        (s.priceText ? '　💰 ' + ESC(s.priceText) : '') + '</div>' +
+        (perf.date ? '<div class="meta">🎭 场次：' + ESC(perf.date) + (perf.start ? ' ' + ESC(perf.start) : '') + (perf.venue ? ' · ' + ESC(perf.venue) : '') + (perfCount > 1 ? ' 等共 ' + perfCount + ' 场' : '') + '</div>' : '') +
         '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: s.title, city: s.city, open: s.ticketOpenText, date: perf.date, time: perf.start, venue: perf.venue }) + '">＋ 加入日历</button></div></div>';
     }
   }

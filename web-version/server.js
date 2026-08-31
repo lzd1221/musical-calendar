@@ -141,6 +141,7 @@ function mergeResults(items, { city, year }) {
       title: primary.title, city: primary.city || city || '', year: primary.year || year || '',
       platform: primary.platform, ticketUrl: primary.ticketUrl || (channels[0] && channels[0].url) || '',
       ticketOpenAt: primary.ticketOpenAt || null, ticketOpenText: primary.ticketOpenText || '',
+      priceText: primary.priceText || '', genre: primary.genre || '',
       performances: Object.keys(perfMap).sort().map(k => perfMap[k]), channels, resale: !!primary.resale
     });
   }
