@@ -3,458 +3,350 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎭 音乐剧排期 & 抢票日历 · 网页版</title>
+<title>🎭 音乐剧排期 & 抢票日历</title>
 <style>
   :root{
-    --bg:#12101e; --bg2:#0e0c18; --panel:#1b1730; --panel2:#221d3d;
-    --border:#332c55; --text:#ece9f7; --muted:#a49fc4; --dim:#6f6a92;
+    --bg:#12101e; --panel:#1b1730; --panel2:#221d3d; --border:#332c55;
+    --text:#ece9f7; --muted:#a49fc4; --dim:#6f6a92;
     --accent:#f2b24c; --ok:#51cf66; --danger:#ff6b6b; --warn:#ffd43b; --info:#6c9eff;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
-    background:linear-gradient(160deg,var(--bg),var(--bg2));color:var(--text);
-    font-size:14px;line-height:1.6;min-height:100vh;padding-bottom:60px;
-  }
-  .wrap{max-width:860px;margin:0 auto;padding:24px 18px}
-  header{text-align:center;padding:26px 0 8px}
-  header h1{font-size:24px;letter-spacing:.5px}
-  header .sub{color:var(--dim);font-size:13px;margin-top:6px}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-top:16px}
+  body{font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:linear-gradient(160deg,var(--bg),#0e0c18);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+  .hidden{display:none!important}
+
+  /* 登录/注册 */
+  .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .auth-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:32px 28px;width:340px}
+  .auth-box h1{font-size:20px;text-align:center;margin-bottom:4px}
+  .auth-box .sub{color:var(--dim);font-size:12.5px;text-align:center;margin-bottom:20px}
+  .auth-tabs{display:flex;gap:8px;margin-bottom:20px}
+  .auth-tabs .tab{flex:1;text-align:center;padding:9px;border-radius:10px;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:14px}
+  .auth-tabs .tab.on{background:rgba(242,178,76,.15);border-color:var(--accent);color:var(--accent);font-weight:600}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  textarea{resize:vertical;min-height:56px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 20px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer;font-size:14px;width:100%}
+  .btn.primary{background:var(--accent);color:#1a1428;font-weight:600;border-color:var(--accent)}
+  .btn.sm{width:auto;padding:5px 12px;font-size:12.5px;border-radius:8px}
+  .btn.danger{color:var(--danger);border-color:rgba(255,107,107,.4)}
+  .err{color:var(--danger);font-size:12.5px;min-height:18px;margin-top:8px;text-align:center}
+
+  /* 主界面 */
+  .wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .topbar h1{font-size:20px}
+  .topbar .user{color:var(--muted);font-size:13px}
+  .spacer{flex:1}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
   .card h2{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
   .card h2 .hint{font-size:12px;color:var(--dim);font-weight:400}
   .muted{color:var(--muted)} .dim{color:var(--dim)} .small{font-size:12px}
 
-  /* 搜索 */
-  .search-row{display:flex;gap:10px;flex-wrap:wrap}
-  .search-main .kw-wrap{position:relative}
-  .search-main input[type=text]{width:100%}
-  .search-sub{margin-top:12px}
-  .search-sub .row-sub{display:flex;gap:10px;margin-top:12px;align-items:center}
-  .search-sub .row-sub select{flex:1}
-  .city-chips{display:flex;flex-wrap:wrap;gap:8px}
-  .city-chip{
-    padding:9px 20px;border-radius:999px;border:1px solid var(--border);
-    background:var(--panel2);color:var(--muted);cursor:pointer;font-size:13.5px;transition:.12s;
-  }
-  .city-chip:hover{border-color:var(--accent);color:var(--text)}
-  .city-chip.on{background:rgba(242,178,76,.15);border-color:var(--accent);color:var(--accent);font-weight:600}
-  /* 剧名联想下拉 */
-  .kw-drop{
-    position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
-    background:var(--panel2);border:1px solid var(--border);border-radius:12px;
-    max-height:340px;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,.45);
-  }
-  .kw-drop .item{padding:11px 16px;font-size:14.5px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px dashed rgba(51,44,85,.6)}
-  .kw-drop .item:last-child{border-bottom:none}
-  .kw-drop .item:hover,.kw-drop .item.active{background:rgba(242,178,76,.13)}
-  .kw-drop .item .tag{color:var(--dim);font-size:12px;margin-left:auto;white-space:nowrap}
-  .kw-drop .empty{padding:14px;color:var(--dim);font-size:13px;text-align:center}
-  .search-row input[type=text]{flex:1;min-width:200px}
-  input,select{
-    background:var(--panel2);border:1px solid var(--border);color:var(--text);
-    border-radius:10px;padding:11px 14px;font-size:15px;outline:none;font-family:inherit;
-  }
-  input:focus,select:focus{border-color:var(--accent)}
-  select{padding:11px 10px}
-  .btn{
-    display:inline-flex;align-items:center;justify-content:center;gap:6px;
-    padding:11px 24px;border-radius:10px;border:1px solid var(--border);
-    background:var(--panel2);color:var(--text);cursor:pointer;font-size:15px;transition:.15s;
-  }
-  .btn.primary{background:var(--accent);color:#1a1428;font-weight:600;border-color:var(--accent)}
-  .btn.primary:hover{filter:brightness(1.08)}
-  .btn.sm{padding:6px 14px;font-size:13px;border-radius:8px}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
+  /* 日历 */
+  .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .cal-title{font-size:18px;font-weight:700;min-width:130px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .dow{text-align:center;color:var(--dim);font-size:11px;padding:4px 0}
+  .cell{background:var(--panel2);border:1px solid var(--border);border-radius:10px;min-height:84px;padding:6px;cursor:pointer}
+  .cell:hover{border-color:var(--accent)}
+  .cell.today{border-color:var(--accent)}
+  .cell.other{opacity:.3}
+  .day-num{font-size:12px;color:var(--muted)}
+  .cell.today .day-num{color:var(--accent);font-weight:700}
+  .mark{font-size:11px;padding:1px 5px;border-radius:5px;margin-top:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .mark.ticket{background:rgba(255,107,107,.16);color:#ffb3b3}
+  .mark.show{background:rgba(242,178,76,.16);color:#ffd98a}
 
-  /* 来源状态 */
-  .src-status{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-  .src-chip{
-    font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid var(--border);
-    color:var(--muted);display:inline-flex;align-items:center;gap:5px;
-  }
-  .src-chip.ok{color:var(--ok);border-color:rgba(81,207,102,.5)}
-  .src-chip.fail{color:var(--danger);border-color:rgba(255,107,107,.5)}
-  .src-chip.loading{color:var(--warn);border-color:rgba(255,212,59,.5)}
-  .src-chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+  /* 待抢票 + 列表 */
+  .item{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px dashed var(--border);flex-wrap:wrap}
+  .item:last-child{border-bottom:none}
+  .item .nm{font-weight:600}
+  .item .meta{font-size:12.5px;color:var(--muted)}
+  .countdown{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+  .countdown.hot{color:var(--danger)}
+  .status{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted);cursor:pointer;background:transparent}
+  .status.on{color:var(--ok);border-color:rgba(81,207,102,.5)}
+  .status.got{color:var(--info);border-color:rgba(108,158,255,.5)}
+  .status.drop{color:var(--danger);border-color:rgba(255,107,107,.4)}
+  .empty{text-align:center;color:var(--dim);padding:24px 10px}
 
-  /* 结果卡片 */
-  .show-card{border:1px solid var(--border);border-radius:12px;background:var(--panel2);padding:14px 16px;margin-top:12px}
-  .show-card .t1{font-size:17px;font-weight:700}
-  .pills{margin:8px 0}
-  .pill{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted);margin-right:6px;margin-top:4px}
-  .pill.plat{color:var(--accent);border-color:rgba(242,178,76,.5)}
-  .pill.resale{color:var(--warn);border-color:rgba(255,212,59,.5)}
-  .tick-row{display:flex;align-items:center;gap:12px;margin:6px 0;flex-wrap:wrap}
-  .cd{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
-  .cd.hot{color:var(--danger)}
-  .link{color:var(--info);text-decoration:none;font-size:13px}
-  .link:hover{text-decoration:underline}
-  .perf{font-size:13px;color:var(--muted);border-top:1px dashed var(--border);padding:6px 0 0;margin-top:8px}
-  .perf span{margin-right:14px}
-  .chan{font-size:13px;color:var(--muted);padding:3px 0}
-  .chan a{color:var(--info);text-decoration:none}
-
-  /* 必应参考 */
-  .bing-item{padding:8px 2px;border-bottom:1px dashed var(--border)}
-  .bing-item:last-child{border-bottom:none}
-  .bing-item .bt{font-weight:600;font-size:14px}
-  .bing-item .bt a{color:var(--accent);text-decoration:none}
-  .bing-item .bs{font-size:12.5px;color:var(--muted);margin-top:2px}
-  .bing-item .bu{font-size:11.5px;color:var(--dim)}
-  .deep-info{margin-top:6px;padding:8px 10px;background:rgba(81,207,102,.06);border:1px solid rgba(81,207,102,.25);border-radius:8px;font-size:12.5px}
-  .deep-info .di-open{color:var(--ok);font-weight:700}
-  .deep-info .di-times{color:var(--muted);margin-top:3px}
-
-  /* 提示 */
-  .tips-box{border:1px solid rgba(255,212,59,.45);background:rgba(255,212,59,.07);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--warn);margin-top:14px}
-  .tips-box.good{border-color:rgba(81,207,102,.45);background:rgba(81,207,102,.07);color:var(--ok)}
-
-  /* 手动录入 */
-  .manual-form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:6px}
-  .manual-form .full{grid-column:1/-1}
-  .manual-form label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
-  textarea{grid-column:1/-1;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13.5px;font-family:inherit;min-height:70px;resize:vertical}
-  .record{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px;background:var(--panel2)}
-  .record .r-title{font-weight:600}
-  .empty{text-align:center;color:var(--dim);padding:30px 10px}
-  .empty .big{font-size:44px;margin-bottom:8px}
-  .hidden{display:none}
-  details{font-size:13px}
-  details summary{cursor:pointer;color:var(--muted);padding:6px 0}
-  footer{text-align:center;color:var(--dim);font-size:12px;margin-top:30px;line-height:2}
-  @media (max-width:640px){.manual-form{grid-template-columns:1fr}}
+  /* 弹层 */
+  .overlay{position:fixed;inset:0;background:rgba(6,5,12,.75);z-index:100;display:flex;align-items:center;justify-content:center;padding:18px}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;width:100%;max-width:460px;padding:22px;max-height:88vh;overflow:auto}
+  .modal h3{font-size:17px;margin-bottom:16px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+  .form-grid .full{grid-column:1/-1}
+  .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+  .modal .actions .btn{width:auto}
+  @media (max-width:640px){.form-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>🎭 音乐剧排期 & 抢票日历 · 网页版</h1>
-    <div class="sub">输入剧名，自动爬取抢票平台 / 开票时间 / 场次信息；爬不到会明确提示</div>
-  </header>
 
-  <!-- 搜索 -->
-  <div class="card">
-    <div class="search-main">
-      <div class="kw-wrap">
-        <input type="text" id="kw" placeholder="输入剧名（输入一个字即可联想，如：剧）" autocomplete="off">
-        <div id="kw-drop" class="kw-drop hidden"></div>
-      </div>
-      <div class="search-sub">
-        <div class="city-chips" id="cityChips"></div>
-        <div class="row-sub">
-          <select id="year">
-            <option value="">不限年份</option>
-            <option value="2026">2026</option>
-            <option value="2025" selected>2025</option>
-            <option value="2024">2024</option>
-          </select>
-          <button class="btn primary" id="btnSearch">🔍 搜索</button>
-        </div>
-      </div>
+<!-- 登录/注册 -->
+<div id="authView" class="auth-wrap hidden">
+  <div class="auth-box">
+    <h1>🎭 音乐剧排期 & 抢票日历</h1>
+    <div class="sub">注册账户，管理你自己的看剧与抢票计划</div>
+    <div class="auth-tabs">
+      <div class="tab on" data-mode="login" id="tabLogin">登录</div>
+      <div class="tab" data-mode="register" id="tabRegister">注册</div>
     </div>
-    <div id="srcStatus" class="src-status"></div>
+    <div id="loginForm">
+      <div class="field"><label>用户名</label><input type="text" id="loginUser" placeholder="用户名" autocomplete="username"></div>
+      <div class="field"><label>密码</label><input type="password" id="loginPass" placeholder="密码" autocomplete="current-password"></div>
+      <button class="btn primary" id="btnLogin">登 录</button>
+    </div>
+    <div id="registerForm" class="hidden">
+      <div class="field"><label>用户名（2-20 位）</label><input type="text" id="regUser" placeholder="字母/数字/中文" autocomplete="username"></div>
+      <div class="field"><label>密码（至少 6 位）</label><input type="password" id="regPass" placeholder="密码" autocomplete="new-password"></div>
+      <div class="field"><label>确认密码</label><input type="password" id="regPass2" placeholder="再输一次" autocomplete="new-password"></div>
+      <button class="btn primary" id="btnRegister">注册并进入</button>
+    </div>
+    <div class="err" id="authErr"></div>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="appView" class="wrap hidden">
+  <div class="topbar">
+    <h1>🎭 我的日历</h1>
+    <span class="user" id="welcomeUser"></span>
+    <div class="spacer"></div>
+    <button class="btn sm primary" id="btnAdd">＋ 添加计划</button>
+    <button class="btn sm" id="btnLogout">退出</button>
   </div>
 
-  <!-- 结果 -->
-  <div id="resultArea"></div>
-
-  <!-- 手动录入兜底 -->
+  <!-- 月历 -->
   <div class="card">
-    <details>
-      <summary>✍️ 爬取不到？手动录入（信息会保存在本机浏览器）</summary>
-      <div class="manual-form" style="margin-top:10px">
-        <div><label>剧名 *</label><input type="text" id="m-title" placeholder="如：剧院魅影"></div>
-        <div><label>城市 / 年份</label><input type="text" id="m-city" placeholder="上海 2025"></div>
-        <div><label>开票时间（可选）</label><input type="text" id="m-open" placeholder="2025-06-01 10:00"></div>
-        <div><label>购票链接（可选）</label><input type="text" id="m-url" placeholder="https://…"></div>
-        <textarea id="m-perfs" placeholder="场次排期（每行一场）：&#10;2025-06-20 19:30 上海文化广场&#10;2025-06-21 14:00 上海文化广场"></textarea>
-        <button class="btn primary full" id="btnManual">保存到我的记录</button>
-      </div>
-    </details>
-    <div id="records"></div>
+    <div class="cal-head">
+      <div class="cal-title" id="calTitle"></div>
+      <button class="btn sm" id="calPrev">‹ 上月</button>
+      <button class="btn sm" id="calToday">今天</button>
+      <button class="btn sm" id="calNext">下月 ›</button>
+      <div class="spacer"></div>
+      <span class="small dim">🎫 抢票 · 🎭 看剧</span>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
   </div>
 
-  <footer>
-    数据由本地 Node 服务（server.js）真实抓取：票务平台接口直连 + 360/必应搜索兜底。<br>
-    票务平台普遍存在反爬限制，直连失败属正常现象——此时会给出网页参考与手动录入兜底；开票时间以官方渠道为准。<br>
-    使用前请先启动服务：<code>node web-version/server.js</code>，再访问 <code>http://localhost:8878</code>。
-  </footer>
+  <!-- 待抢票 -->
+  <div class="card">
+    <h2>🎫 待抢票 <span class="hint">按时间排序，开票前 30 分钟内变红</span></h2>
+    <div id="upcoming"></div>
+  </div>
+
+  <!-- 我的计划 -->
+  <div class="card">
+    <h2>📋 我的计划 <span class="hint">点击状态切换：待抢 / 已抢 / 已购 / 放弃</span></h2>
+    <div id="planList"></div>
+  </div>
+</div>
+
+<!-- 添加计划弹层 -->
+<div class="overlay hidden" id="addOverlay">
+  <div class="modal">
+    <h3>＋ 添加计划</h3>
+    <div class="form-grid">
+      <div class="field full"><label>剧名 *</label><input type="text" id="f-name" placeholder="如：剧院魅影"></div>
+      <div class="field"><label>城市</label><input type="text" id="f-city" placeholder="上海"></div>
+      <div class="field"><label>抢票时间（开票）</label><input type="datetime-local" id="f-open"></div>
+      <div class="field"><label>演出日期</label><input type="date" id="f-date"></div>
+      <div class="field"><label>演出时间</label><input type="time" id="f-time"></div>
+      <div class="field"><label>场馆</label><input type="text" id="f-venue" placeholder="如：上海文化广场"></div>
+      <div class="field full"><label>备注</label><input type="text" id="f-note" placeholder="如：某卡司 / 末场"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnCancel">取消</button>
+      <button class="btn primary" id="btnSave">保存</button>
+    </div>
+  </div>
 </div>
 
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
 const ESC = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REC_KEY = 'web-version-records';
-const CITY_KEY = 'web-version-city';
+const pad2 = n => String(n).padStart(2, '0');
+const dateStr = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+const fmtDT = ts => { const d = new Date(ts); return (d.getMonth()+1)+'月'+d.getDate()+'日 '+pad2(d.getHours())+':'+pad2(d.getMinutes()); };
+const fmtCn = ds => { const p = (ds||'').split('-'); return p.length===3 ? (+p[1])+'月'+(+p[2])+'日' : (ds||''); };
 
-/* ---- 环境检测：GitHub Pages 预览版 vs 本地服务版 ----
-   Pages 是静态托管，无法运行爬虫；本地 http://localhost:8878 才能真正搜索。 */
-const IS_LOCAL = ['localhost', '127.0.0.1'].indexOf(location.hostname) > -1;
-(function previewBanner() {
-  if (IS_LOCAL) return;
-  const b = document.createElement('div');
-  b.style.cssText = 'background:rgba(242,178,76,.14);border:1px solid rgba(242,178,76,.5);color:#ffd98a;' +
-    'border-radius:10px;padding:10px 16px;font-size:13px;margin-bottom:14px;line-height:1.7';
-  b.innerHTML = '👀 当前为 <b>GitHub Pages 预览版</b>：剧名联想、城市点选、界面效果均可体验；<br>' +
-    '「搜索/爬取」需要本地运行 <code>node web-version/server.js</code> 后访问 <code>http://localhost:8878</code>（静态托管无法跑爬虫）。<br>' +
-    '另见：<a href="./musical-calendar.html" style="color:#ffd98a">离线手动版（无爬虫，示例数据+手动录入）</a>。';
-  document.querySelector('.wrap').prepend(b);
-})();
+async function api(path, method, body) {
+  const opt = { method: method || 'GET', headers: {} };
+  if (body) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  const r = await fetch(path, opt);
+  const data = await r.json().catch(() => ({}));
+  return { status: r.status, data };
+}
 
-/* ---- 预览版前端锁（仅静态托管时启用；服务器版由后端整站鉴权，无需此锁）----
-   注意：静态页面无法真正加密，此密码可见于公开源码，仅作演示/防误入。
-   真实密码保护以 server.js 后端鉴权为准（config.js 的 PASSWORD 字段）。 */
-(function previewLock() {
-  if (IS_LOCAL) return;
-  let authed = false;
-  try { authed = sessionStorage.getItem('mw_preview_auth') === '1'; } catch (e) {}
-  if (authed) return;
-  const ov = document.createElement('div');
-  ov.id = 'preview-lock';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#12101e;display:flex;align-items:center;justify-content:center';
-  ov.innerHTML =
-    '<div style="background:#1b1730;border:1px solid #332c55;border-radius:16px;padding:36px 32px;width:320px;text-align:center">' +
-    '<div style="font-size:36px">🎭</div><h2 style="font-size:20px;margin:10px 0 6px;color:#ece9f7">音乐剧排期 & 抢票日历</h2>' +
-    '<p style="color:#a49fc4;font-size:13px;margin:0 0 20px">预览版 · 请输入访问密码</p>' +
-    '<input id="pv-pwd" type="password" placeholder="访问密码" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid #332c55;background:#221d3d;color:#ece9f7;font-size:15px;outline:none">' +
-    '<button id="pv-btn" style="width:100%;margin-top:14px;padding:12px;border-radius:10px;border:none;background:#f2b24c;color:#1a1428;font-size:15px;font-weight:600;cursor:pointer">🔓 进入</button>' +
-    '<div id="pv-err" style="color:#ff6b6b;font-size:13px;min-height:18px;margin-top:10px"></div></div>';
-  document.body.appendChild(ov);
-  const tryLogin = () => {
-    const v = document.getElementById('pv-pwd').value;
-    if (v === 'musical2025') {
-      try { sessionStorage.setItem('mw_preview_auth', '1'); } catch (e) {}
-      ov.remove();
-    } else {
-      document.getElementById('pv-err').textContent = '密码错误';
+let ME = null;
+let plans = [];
+let calOffset = 0; // 相对当前月的偏移
+
+/* ---------- 登录/注册 ---------- */
+function switchAuth(mode) {
+  $('#tabLogin').classList.toggle('on', mode === 'login');
+  $('#tabRegister').classList.toggle('on', mode === 'register');
+  $('#loginForm').classList.toggle('hidden', mode !== 'login');
+  $('#registerForm').classList.toggle('hidden', mode !== 'register');
+  $('#authErr').textContent = '';
+}
+$('#tabLogin').onclick = () => switchAuth('login');
+$('#tabRegister').onclick = () => switchAuth('register');
+$('#btnLogin').onclick = async () => {
+  const r = await api('/api/login', 'POST', { username: $('#loginUser').value.trim(), password: $('#loginPass').value });
+  if (r.status === 200) { location.reload(); } else { $('#authErr').textContent = r.data.msg || '登录失败'; }
+};
+$('#btnRegister').onclick = async () => {
+  const u = $('#regUser').value.trim(), p = $('#regPass').value, p2 = $('#regPass2').value;
+  if (p !== p2) { $('#authErr').textContent = '两次密码不一致'; return; }
+  const r = await api('/api/register', 'POST', { username: u, password: p });
+  if (r.status === 200) { location.reload(); } else { $('#authErr').textContent = r.data.msg || '注册失败'; }
+};
+['loginPass','regPass'].forEach(id => $(('#'+id)).addEventListener('keydown', e => { if (e.key==='Enter') (id==='loginPass'?$('#btnLogin'):$('#btnRegister')).click(); }));
+
+/* ---------- 主界面 ---------- */
+async function loadPlans() {
+  const r = await api('/api/plans');
+  if (r.status === 200) { plans = r.data.list || []; }
+  render();
+}
+function render() {
+  renderCalendar();
+  renderUpcoming();
+  renderList();
+}
+function renderCalendar() {
+  const now = new Date();
+  const base = new Date(now.getFullYear(), now.getMonth() + calOffset, 1);
+  const y = base.getFullYear(), m = base.getMonth() + 1;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const offset = (base.getDay() + 6) % 7;
+  const today = dateStr(new Date());
+  $('#calTitle').textContent = y + '年' + m + '月';
+
+  const byDate = {};
+  for (const p of plans) {
+    // 抢票日
+    if (p.ticketOpenAt) {
+      const d = dateStr(new Date(p.ticketOpenAt));
+      (byDate[d] = byDate[d] || []).push({ type: 'ticket', p });
     }
-  };
-  document.getElementById('pv-btn').onclick = tryLogin;
-  document.getElementById('pv-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
-  document.getElementById('pv-pwd').focus();
-})();
-
-/* ---- 剧名词库（联想用，可自行增补）---- */
-const SHOWS = [
-  { n: '剧院魅影', c: '上海' }, { n: '剧院魅影:真爱永恒', c: '上海' }, { n: '悲惨世界', c: '上海' },
-  { n: '汉密尔顿', c: '上海' }, { n: '摇滚莫扎特', c: '上海' }, { n: '巴黎圣母院', c: '上海' },
-  { n: '罗密欧与朱丽叶', c: '上海' }, { n: '基督山伯爵', c: '上海' }, { n: '道林格雷的画像', c: '上海' },
-  { n: '桑塔露琪亚', c: '上海' }, { n: '粉丝来信', c: '上海' }, { n: '献给阿尔吉侬的花束', c: '上海' },
-  { n: '我的遗愿清单', c: '上海' }, { n: '也许美好结局', c: '上海' }, { n: '阿波罗尼亚', c: '上海' },
-  { n: '马不停蹄的忧伤', c: '上海' }, { n: '人间失格', c: '上海' }, { n: '伪装者', c: '上海' },
-  { n: '赵氏孤儿', c: '上海' }, { n: '觉醒年代', c: '北京' }, { n: '青春禁忌游戏', c: '北京' },
-  { n: '猎罪图鉴', c: '上海' }, { n: '沉默的真相', c: '上海' }, { n: '隐秘的角落', c: '上海' },
-  { n: '白夜行', c: '上海' }, { n: '解忧杂货店', c: '上海' }, { n: '面试', c: '上海' },
-  { n: '烟雾', c: '上海' }, { n: '灵魂摆渡之永生', c: '北京' }, { n: '春之觉醒', c: '上海' },
-  { n: '近乎正常', c: '上海' }, { n: '长靴皇后', c: '上海' }, { n: '妈妈咪呀', c: '上海' },
-  { n: '狮子王', c: '上海' }, { n: '猫', c: '上海' }, { n: '芝加哥', c: '北京' },
-  { n: '吉屋出租', c: '上海' }, { n: '玛蒂尔达', c: '上海' }, { n: '音乐之声', c: '上海' },
-  { n: '美女与野兽', c: '上海' }, { n: '阿拉丁', c: '上海' }, { n: '冰雪奇缘', c: '上海' },
-  { n: '泰坦尼克号', c: '上海' }, { n: '德古拉', c: '上海' }, { n: '伊丽莎白', c: '上海' },
-  { n: '莫扎特', c: '上海' }, { n: '蝴蝶夫人', c: '上海' }, { n: '图兰朵', c: '北京' },
-  { n: '永不消逝的电波', c: '上海' }, { n: '只此青绿', c: '上海' }, { n: '红楼梦', c: '上海' },
-  { n: '朱鹮', c: '上海' }, { n: '天鹅湖', c: '上海' }, { n: '胡桃夹子', c: '北京' },
-  { n: '卡门', c: '北京' }, { n: '红色娘子军', c: '北京' }, { n: '霸王别姬', c: '北京' },
-  { n: '茶馆', c: '北京' }, { n: '雷雨', c: '北京' }, { n: '暗恋桃花源', c: '上海' },
-  { n: '恋爱的犀牛', c: '北京' }, { n: '如梦之梦', c: '北京' }, { n: '四世同堂', c: '北京' },
-  { n: '北京人', c: '北京' }, { n: '窝头会馆', c: '北京' }, { n: '惊梦', c: '北京' },
-  { n: '戏台', c: '北京' }, { n: '蒋公的面子', c: '南京' }, { n: '繁花', c: '上海' },
-  { n: '长恨歌', c: '上海' }, { n: '海上花', c: '上海' }, { n: '断金', c: '北京' },
-  { n: '苏东坡', c: '北京' }, { n: '杜甫', c: '北京' }, { n: '李白', c: '北京' },
-  { n: '咏春', c: '广州' }, { n: '沙湾往事', c: '广州' }, { n: '丝路花雨', c: '西安' },
-  { n: '大红灯笼高高挂', c: '北京' }, { n: 'The Phantom of the Opera', c: '上海' },
-  { n: 'Les Miserables', c: '上海' }, { n: 'Hamilton', c: '上海' }, { n: 'Wicked', c: '上海' },
-  { n: 'Cats', c: '上海' }, { n: 'Chicago', c: '北京' }, { n: 'Mamma Mia', c: '上海' },
-  { n: 'The Lion King', c: '上海' }
-];
-const CITIES = ['上海','北京','广州','深圳','杭州','南京','苏州','成都','重庆','武汉','西安','长沙','天津','青岛','其他'];
-
-/* ---- 城市点选 ---- */
-let citySel = (() => { try { return localStorage.getItem(CITY_KEY) || '上海'; } catch (e) { return '上海'; } })();
-function renderCityChips(){
-  $('#cityChips').innerHTML = CITIES.map(c =>
-    '<span class="city-chip' + (c === citySel ? ' on' : '') + '" data-city="' + c + '">' + c + '</span>'
-  ).join('');
+    // 演出日
+    if (p.perfDate) {
+      (byDate[p.perfDate] = byDate[p.perfDate] || []).push({ type: 'show', p });
+    }
+  }
+  let html = '<div class="dow">一</div><div class="dow">二</div><div class="dow">三</div><div class="dow">四</div><div class="dow">五</div><div class="dow">六</div><div class="dow">日</div>';
+  for (let i = 0; i < offset; i++) html += '<div class="cell other"></div>';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = y + '-' + pad2(m) + '-' + pad2(day);
+    const items = byDate[d] || [];
+    let marks = '';
+    for (const it of items.slice(0, 3)) {
+      marks += '<div class="mark ' + (it.type === 'ticket' ? 'ticket' : 'show') + '">' + (it.type === 'ticket' ? '🎫' : '🎭') + ESC(it.p.showName) + '</div>';
+    }
+    if (items.length > 3) marks += '<div class="mark dim">+' + (items.length - 3) + '</div>';
+    html += '<div class="cell' + (d === today ? ' today' : '') + '" data-date="' + d + '">' +
+      '<div class="day-num">' + day + '</div>' + marks + '</div>';
+  }
+  $('#calGrid').innerHTML = html;
 }
-$('#cityChips').addEventListener('click', e => {
-  const chip = e.target.closest && e.target.closest('.city-chip');
-  if (!chip) return;
-  citySel = chip.dataset.city;
-  try { localStorage.setItem(CITY_KEY, citySel); } catch (err) {}
-  renderCityChips();
-});
-
-/* ---- 剧名联想（输入一个字即出下拉）---- */
-let kwActive = -1;      // 当前高亮项
-let kwItems = [];       // 当前过滤结果
-let kwTimer = null;
-const kwInput = $('#kw');
-const kwDrop = $('#kw-drop');
-
-function norm(s){ return String(s || '').toLowerCase(); }
-function filterShows(q){
-  q = norm(q.trim());
-  if (!q) return [];
-  return SHOWS.filter(s => norm(s.n).indexOf(q) > -1 || norm(s.c).indexOf(q) > -1).slice(0, 8);
+function renderUpcoming() {
+  const now = Date.now();
+  const upcoming = plans.filter(p => p.ticketStatus === '待抢' && p.ticketOpenAt && p.ticketOpenAt > now)
+    .sort((a, b) => a.ticketOpenAt - b.ticketOpenAt);
+  if (!upcoming.length) { $('#upcoming').innerHTML = '<div class="empty">暂无待抢票计划，点「＋ 添加计划」开始</div>'; return; }
+  $('#upcoming').innerHTML = upcoming.map(p => {
+    const ms = p.ticketOpenAt - now;
+    const hot = ms <= 30 * 60000;
+    const cd = ms > 0 ? countdownText(ms) : '已开票';
+    return '<div class="item"><div style="flex:1;min-width:180px"><div class="nm">' + ESC(p.showName) + '</div>' +
+      '<div class="meta">' + fmtDT(p.ticketOpenAt) + (p.venue ? ' · ' + ESC(p.venue) : '') + '</div></div>' +
+      '<span class="countdown' + (hot ? ' hot' : '') + '">' + cd + '</span>' +
+      '<button class="btn sm" data-act="got" data-id="' + p.id + '">已抢</button></div>';
+  }).join('');
+  setTimeout(renderUpcoming, 1000);
 }
-function renderKwDrop(){
-  if (!kwItems.length) { kwDrop.classList.add('hidden'); return; }
-  kwDrop.innerHTML = kwItems.map((s, i) =>
-    '<div class="item' + (i === kwActive ? ' active' : '') + '" data-i="' + i + '">' + ESC(s.n) +
-    (s.c ? '<span class="tag">' + ESC(s.c) + '</span>' : '') + '</div>'
-  ).join('');
-  kwDrop.classList.remove('hidden');
+function countdownText(ms) {
+  const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return d > 0 ? d + '天 ' + pad2(h) + ':' + pad2(m) + ':' + pad2(sec) : pad2(h) + ':' + pad2(m) + ':' + pad2(sec);
 }
-function hideKwDrop(){ kwDrop.classList.add('hidden'); kwActive = -1; }
-function onKwInput(){
-  clearTimeout(kwTimer);
-  kwTimer = setTimeout(() => {
-    kwItems = filterShows(kwInput.value);
-    kwActive = kwItems.length ? 0 : -1;
-    renderKwDrop();
-  }, 120);
-}
-function pickKw(i){
-  const s = kwItems[i];
-  if (!s) return;
-  kwInput.value = s.n;
-  hideKwDrop();
-  doSearch();
-}
-kwInput.addEventListener('input', onKwInput);
-kwInput.addEventListener('keydown', e => {
-  if (!kwItems.length) { if (e.key === 'Enter') doSearch(); return; }
-  if (e.key === 'ArrowDown') { e.preventDefault(); kwActive = (kwActive + 1) % kwItems.length; renderKwDrop(); }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); kwActive = (kwActive - 1 + kwItems.length) % kwItems.length; renderKwDrop(); }
-  else if (e.key === 'Enter') { e.preventDefault(); pickKw(kwActive >= 0 ? kwActive : 0); }
-  else if (e.key === 'Escape') { hideKwDrop(); }
-});
-kwDrop.addEventListener('mousedown', e => {
-  const item = e.target.closest && e.target.closest('.item');
-  if (item) pickKw(+item.dataset.i);
-});
-kwInput.addEventListener('blur', () => setTimeout(hideKwDrop, 150));
-renderCityChips();
-
-function fmtDT(ts){ if(!ts) return '未公布'; const d=new Date(ts); return (d.getMonth()+1)+'月'+d.getDate()+'日 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
-function cdText(ts){ if(!ts) return '未公布'; const ms=ts-Date.now(); if(ms<=0) return '已开票'; const s=Math.floor(ms/1000); const d=Math.floor(s/86400), h=Math.floor((s%86400)/3600), m=Math.floor((s%3600)/60); return d>0 ? d+'天 '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0') : String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-
-function renderSrcStatus(status){
-  const box = $('#srcStatus');
-  if(!status || !status.length){ box.innerHTML=''; return; }
-  box.innerHTML = status.map(s=>{
-    const cls = s.ok ? 'ok' : (s.skipped ? '' : 'fail');
-    const label = s.ok ? (s.name + ' ✓' + (s.count ? ' ('+s.count+')' : ''))
-                : (s.skipped ? s.name + '（已禁用）' : s.name + ' ⛔' + (s.error ? '：' + s.error.slice(0,40) : ''));
-    return '<span class="src-chip '+cls+'"><span class="dot"></span>'+ESC(label)+'</span>';
+function renderList() {
+  const list = [...plans].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  if (!list.length) { $('#planList').innerHTML = '<div class="empty">还没有计划</div>'; return; }
+  const statusMap = { '待抢': 'status', '已抢': 'status got', '已购': 'status got', '放弃': 'status drop' };
+  $('#planList').innerHTML = list.map(p => {
+    const open = p.ticketOpenAt ? ('🎫 ' + fmtDT(p.ticketOpenAt)) : '🎫 未设抢票时间';
+    const perf = p.perfDate ? ('🎭 ' + fmtCn(p.perfDate) + (p.perfStart ? ' ' + p.perfStart : '')) : '';
+    return '<div class="item"><div style="flex:1;min-width:200px"><div class="nm">' + ESC(p.showName) +
+      (p.city ? ' <span class="dim small">' + ESC(p.city) + '</span>' : '') + '</div>' +
+      '<div class="meta">' + open + (perf ? ' · ' + perf : '') + (p.venue ? ' · 📍' + ESC(p.venue) : '') + (p.note ? ' · ' + ESC(p.note) : '') + '</div></div>' +
+      ['待抢','已抢','已购','放弃'].map(s => '<button class="btn sm ' + statusMap[s] + (p.ticketStatus === s ? ' on' : '') + '" data-act="status" data-id="' + p.id + '" data-s="' + s + '">' + s + '</button>').join('') +
+      '<button class="btn sm danger" data-act="del" data-id="' + p.id + '">删</button></div>';
   }).join('');
 }
 
-function renderResults(res){
-  const area = $('#resultArea');
-  let html = '';
-  const tips = (res.tips || []).map(t=>'<div>· '+ESC(t)+'</div>').join('');
-  html += '<div class="card" style="border-color:rgba(255,212,59,.4)"><div class="tips-box '+(res.ok?'good':'')+'">'+tips+'</div></div>';
+/* ---------- 添加计划 ---------- */
+$('#btnAdd').onclick = () => { $('#addOverlay').classList.remove('hidden'); $('#f-name').focus(); };
+$('#btnCancel').onclick = () => $('#addOverlay').classList.add('hidden');
+$('#addOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) $('#addOverlay').classList.add('hidden'); });
+$('#btnSave').onclick = async () => {
+  const showName = $('#f-name').value.trim();
+  if (!showName) { alert('请填写剧名'); return; }
+  const body = {
+    showName, city: $('#f-city').value.trim(),
+    ticketOpenText: $('#f-open').value, perfDate: $('#f-date').value, perfStart: $('#f-time').value,
+    venue: $('#f-venue').value.trim(), note: $('#f-note').value.trim()
+  };
+  const r = await api('/api/plans', 'POST', body);
+  if (r.status === 200) {
+    $('#addOverlay').classList.add('hidden');
+    $('#f-name').value = ''; $('#f-open').value = ''; $('#f-date').value = ''; $('#f-time').value = ''; $('#f-venue').value = ''; $('#f-note').value = '';
+    await loadPlans();
+  } else { alert(r.data.msg || '保存失败'); }
+};
 
-  if(res.list && res.list.length){
-    for(const s of res.list){
-      const cd = cdText(s.ticketOpenAt);
-      const hot = s.ticketOpenAt && s.ticketOpenAt-Date.now() <= 30*60000 && s.ticketOpenAt > Date.now();
-      html += '<div class="card show-card"><div class="t1">'+ESC(s.title)+'</div>';
-      html += '<div class="pills"><span class="pill">'+ESC(s.city||'城市未知')+'</span><span class="pill">'+ESC(s.year||'年份未知')+'</span><span class="pill plat">'+ESC(s.platform||'')+'</span>'+(s.resale?'<span class="pill resale">二手/比价</span>':'')+'</div>';
-      html += '<div class="tick-row"><span class="dim small">开票</span><span class="cd'+(hot?' hot':'')+'">'+ESC(cd)+'</span><span class="dim small">'+(s.ticketOpenText?ESC(s.ticketOpenText):'')+'</span>';
-      if(s.ticketUrl) html += '<a class="link" target="_blank" rel="noopener" href="'+ESC(s.ticketUrl)+'">去购票 ↗</a>';
-      html += '</div>';
-      if(s.performances && s.performances.length){
-        html += '<div class="perf">'+s.performances.map(p=>'<span>📅 '+ESC(p.date||'')+' '+(p.weekday?p.weekday:'')+'</span><span>🕐 '+ESC(p.start||'待定')+(p.end?'–'+ESC(p.end):'')+'</span><span>📍 '+ESC(p.venue||'')+'</span>').join('')+'</div>';
-      }
-      if(s.channels && s.channels.length>1){
-        html += '<div class="chan" style="margin-top:8px">其他渠道：'+
-          s.channels.filter(c=>c.platform!==s.platform).map(c=>'<span>'+ESC(c.platform)+' <a target="_blank" rel="noopener" href="'+ESC(c.url)+'">打开 ↗</a></span>　').join('')+'</div>';
-      }
-      html += '</div>';
-    }
-  }
-
-  if(res.bing && res.bing.length){
-    const title = res.deepHits ? '🎫 相关网页（已解析出开票信息）' : '🔍 相关网页参考';
-    html += '<div class="card"><h2>'+title+' <span class="hint">'+ESC(res.searchSrc||'搜索')+'发现，点开核对官方信息</span></h2>';
-    for(const b of res.bing){
-      html += '<div class="bing-item"><div class="bt"><a target="_blank" rel="noopener" href="'+ESC(b.url)+'">'+ESC(b.title)+'</a></div>';
-      if(b.deep && (b.deep.openText || (b.deep.showTimes||[]).length || b.deep.venue || b.deep.price)){
-        html += '<div class="deep-info">';
-        if(b.deep.openText) html += '<span class="di-open">🎫 开票：'+ESC(b.deep.openText)+'</span> ';
-        if(b.deep.venue) html += '<span>📍 '+ESC(b.deep.venue)+'</span> ';
-        if(b.deep.price) html += '<span>💰 '+ESC(b.deep.price)+'</span> ';
-        if(b.deep.showTimes && b.deep.showTimes.length) html += '<div class="di-times">📅 '+b.deep.showTimes.slice(0,4).map(t=>ESC(t.date)+(t.start?' '+ESC(t.start):'')).join('　')+'</div>';
-        html += '</div>';
-      }else if(b.snippet){
-        html += '<div class="bs">'+ESC(b.snippet)+'</div>';
-      }
-      html += '<div class="bu">'+ESC(b.url.slice(0,80))+'</div></div>';
-    }
-    html += '</div>';
-  }
-  if(!res.list || !res.list.length) html += '<div class="card empty"><div class="big">🎭</div>未爬取到「'+ESC(res.name)+'」的信息，可尝试：换关键词 / 不带年份 / 稍后再试 / 手动录入</div>';
-  area.innerHTML = html;
-}
-
-async function doSearch(){
-  const name = $('#kw').value.trim();
-  if(!name){ alert('请输入剧名'); return; }
-  if(!IS_LOCAL){
-    $('#srcStatus').innerHTML = '';
-    $('#resultArea').innerHTML = '<div class="card tips-box">⚠️ 预览版无法在线爬取。<br>请在本地运行 <code>node web-version/server.js</code>，然后访问 <a href="http://localhost:8878">http://localhost:8878</a> 使用完整搜索功能。</div>';
-    return;
-  }
-  const btn = $('#btnSearch');
-  btn.disabled = true; btn.textContent = '⏳ 爬取中…';
-  $('#srcStatus').innerHTML = '<span class="src-chip loading"><span class="dot"></span>正在请求 大麦/猫眼/保利/二手平台 + 360搜索/必应 + 深度解析…（约 8-15 秒）</span>';
-  $('#resultArea').innerHTML = '';
-  try{
-    const qs = new URLSearchParams({ name, city: citySel, year: $('#year').value });
-    const r = await fetch('/api/search?' + qs.toString());
-    const res = await r.json();
-    renderSrcStatus(res.status);
-    renderResults(res);
-  }catch(e){
-    $('#srcStatus').innerHTML = '';
-    $('#resultArea').innerHTML = '<div class="card tips-box">⚠️ 请求失败：'+ESC(e.message)+'<br>请确认本地服务已启动（node web-version/server.js）且本页是从 http://localhost:8878 打开的。</div>';
-  }finally{
-    btn.disabled = false; btn.textContent = '🔍 搜索';
-  }
-}
-
-/* ---- 手动录入 ---- */
-function loadRecords(){ try{ return JSON.parse(localStorage.getItem(REC_KEY)||'[]'); }catch(e){ return []; } }
-function saveRecords(list){ localStorage.setItem(REC_KEY, JSON.stringify(list)); }
-function renderRecords(){
-  const list = loadRecords();
-  $('#records').innerHTML = list.length
-    ? list.map((r,i)=>'<div class="record"><div class="r-title">'+ESC(r.title)+' <span class="dim small">'+ESC(r.cityYear||'')+'</span></div><div class="small dim">'+(r.open?('🎫 开票 '+ESC(r.open)+'　'):'')+(r.url?'<a class="link" target="_blank" rel="noopener" href="'+ESC(r.url)+'">购票链接</a>':'')+'</div><div style="margin-top:4px"><button class="btn sm" data-del="'+i+'">删除</button></div></div>').join('')
-    : '<div class="dim small" style="padding-top:8px">暂无记录</div>';
-}
-function addRecord(){
-  const title = $('#m-title').value.trim();
-  if(!title){ alert('请填写剧名'); return; }
-  const list = loadRecords();
-  list.unshift({ title, cityYear: $('#m-city').value.trim(), open: $('#m-open').value.trim(), url: $('#m-url').value.trim(), perfs: $('#m-perfs').value.trim(), t: Date.now() });
-  saveRecords(list.slice(0, 50));
-  renderRecords();
-  $('#m-title').value=''; $('#m-open').value=''; $('#m-url').value=''; $('#m-perfs').value='';
-}
-
-$('#btnSearch').addEventListener('click', doSearch);
-$('#btnManual').addEventListener('click', addRecord);
-$('#records').addEventListener('click', e=>{
-  const del = e.target.dataset && e.target.dataset.del;
-  if(del !== undefined){
-    const list = loadRecords(); list.splice(+del, 1); saveRecords(list); renderRecords();
+/* ---------- 事件委托 ---------- */
+$('#planList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const id = b.dataset.id;
+  if (b.dataset.act === 'del') {
+    if (!confirm('删除该计划？')) return;
+    await api('/api/plans/' + id, 'DELETE'); await loadPlans();
+  } else if (b.dataset.act === 'status') {
+    await api('/api/plans/' + id, 'PATCH', { ticketStatus: b.dataset.s }); await loadPlans();
   }
 });
-renderRecords();
+$('#upcoming').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  if (b.dataset.act === 'got') { await api('/api/plans/' + b.dataset.id, 'PATCH', { ticketStatus: '已抢' }); await loadPlans(); }
+});
+$('#calPrev').onclick = () => { calOffset--; renderCalendar(); };
+$('#calNext').onclick = () => { calOffset++; renderCalendar(); };
+$('#calToday').onclick = () => { calOffset = 0; renderCalendar(); };
+$('#btnLogout').onclick = async () => { await api('/api/logout', 'POST'); location.reload(); };
+
+/* ---------- 启动 ---------- */
+(async function init() {
+  const r = await api('/api/auth-status');
+  if (r.data.ok) {
+    ME = r.data.username;
+    $('#welcomeUser').textContent = '你好，' + ME;
+    $('#authView').classList.add('hidden');
+    $('#appView').classList.remove('hidden');
+    await loadPlans();
+  } else {
+    $('#authView').classList.remove('hidden');
+    $('#appView').classList.add('hidden');
+  }
+})();
 </script>
 </body>
 </html>
