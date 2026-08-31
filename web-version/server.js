@@ -147,7 +147,7 @@ function mergeResults(items, { city, year }) {
   }
   return out;
 }
-async function handleSearch(q) {
+async function handleSearch(q, uid) {
   const name = (q.name || '').trim();
   if (!name) return { ok: false, msg: '缺少剧名' };
   const city = (q.city || '').trim();
@@ -177,18 +177,21 @@ async function handleSearch(q) {
   const merged = mergeResults(results, { city, year });
   const platformHits = merged.length;
 
-  // 社区共享：其他用户公开的抢票/开场信息
+  // 社区共享：其他用户公开的抢票/开场信息（按点赞数降序）
   const community = plans.filter(p => {
     if (!p.public) return false;
     if (name && p.showName.toLowerCase().indexOf(name.toLowerCase()) === -1) return false;
     if (city && p.city && p.city !== city) return false;
     return true;
-  }).slice(0, 20).map(p => ({
-    id: p.id, showName: p.showName, city: p.city,
-    ticketOpenAt: p.ticketOpenAt, ticketOpenText: p.ticketOpenText,
-    perfDate: p.perfDate, perfStart: p.perfStart, venue: p.venue,
-    sharedBy: p.sharedBy || '网友'
-  }));
+  }).sort((a, b) => (b.likedBy || []).length - (a.likedBy || []).length)
+    .slice(0, 20).map(p => ({
+      id: p.id, showName: p.showName, city: p.city,
+      ticketOpenAt: p.ticketOpenAt, ticketOpenText: p.ticketOpenText,
+      perfDate: p.perfDate, perfStart: p.perfStart, venue: p.venue,
+      sharedBy: p.sharedBy || '网友',
+      likes: (p.likedBy || []).length,
+      liked: !!uid && (p.likedBy || []).indexOf(uid) > -1
+    }));
 
   return {
     ok: platformHits > 0 || community.length > 0,
@@ -266,7 +269,8 @@ const server = http.createServer(async (req, res) => {
   // 计划列表
   if (pathname === '/api/plans' && req.method === 'GET') {
     const list = plans.filter(p => p.userId === uid)
-      .sort((a, b) => (a.ticketOpenAt || a.createdAt) - (b.ticketOpenAt || b.createdAt));
+      .sort((a, b) => (a.ticketOpenAt || a.createdAt) - (b.ticketOpenAt || b.createdAt))
+      .map(p => Object.assign({}, p, { likes: (p.likedBy || []).length }));
     return json(res, 200, { ok: true, list });
   }
 
@@ -292,10 +296,27 @@ const server = http.createServer(async (req, res) => {
       ticketStatus: ['已抢', '已购', '放弃'].indexOf(body.ticketStatus) > -1 ? body.ticketStatus : '待抢',
       public: !!body.public,
       sharedBy: usernameOf(uid),
+      likedBy: [],
       createdAt: Date.now(), updatedAt: Date.now()
     };
     plans.push(plan); saveJSON('plans.json', plans);
     return json(res, 200, { ok: true, plan });
+  }
+
+  // 点赞 / 取消点赞（只能赞他人公开的计划）
+  const likeMatch = pathname.match(/^\/api\/plans\/([\w-]+)\/like$/);
+  if (likeMatch && req.method === 'POST') {
+    const pid = likeMatch[1];
+    const plan = plans.find(p => p.id === pid);
+    if (!plan || !plan.public) return json(res, 404, { ok: false, msg: '该计划不存在或未公开' });
+    if (plan.userId === uid) return json(res, 400, { ok: false, msg: '不能给自己点赞' });
+    plan.likedBy = plan.likedBy || [];
+    const idx = plan.likedBy.indexOf(uid);
+    let liked;
+    if (idx > -1) { plan.likedBy.splice(idx, 1); liked = false; }
+    else { plan.likedBy.push(uid); liked = true; }
+    saveJSON('plans.json', plans);
+    return json(res, 200, { ok: true, liked, likes: plan.likedBy.length });
   }
 
   // 更新 / 删除计划
@@ -332,7 +353,7 @@ const server = http.createServer(async (req, res) => {
   // 搜索
   if (pathname === '/api/search') {
     try {
-      const result = await handleSearch(Object.fromEntries(url.searchParams));
+      const result = await handleSearch(Object.fromEntries(url.searchParams), uid);
       return json(res, 200, result);
     } catch (e) {
       console.error('[api error]', e);

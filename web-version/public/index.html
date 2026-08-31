@@ -362,7 +362,8 @@ function renderSearchResults(res){
         (c.perfDate ? '🎭 开场：' + ESC(c.perfDate) + (c.perfStart ? ' ' + ESC(c.perfStart) : '') + '　' : '') +
         (c.venue ? '📍' + ESC(c.venue) : '') + '</div>' +
         '<div class="meta dim">分享自：' + ESC(c.sharedBy) + '</div>' +
-        '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: c.showName, city: c.city, open: c.ticketOpenText, date: c.perfDate, time: c.perfStart, venue: c.venue }) + '">＋ 加入我的日程</button></div></div>';
+        '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: c.showName, city: c.city, open: c.ticketOpenText, date: c.perfDate, time: c.perfStart, venue: c.venue }) + '">＋ 加入我的日程</button> ' +
+        '<button class="btn sm" data-like="' + c.id + '"' + (c.liked ? ' style="color:var(--accent)"' : '') + '>' + (c.liked ? '👍 已赞' : '👍 赞') + ' <span class="like-n">' + (c.likes || 0) + '</span></button></div></div>';
     }
     html += '</div>';
   }
@@ -392,6 +393,17 @@ function base64Item(obj){
   return encodeURIComponent(JSON.stringify(obj));
 }
 $('#searchResults').addEventListener('click', e => {
+  const likeBtn = e.target.closest('[data-like]');
+  if (likeBtn) {
+    (async () => {
+      const r = await api('/api/plans/' + likeBtn.dataset.like + '/like', 'POST');
+      if (r.status === 200) {
+        likeBtn.style.color = r.data.liked ? 'var(--accent)' : '';
+        likeBtn.innerHTML = (r.data.liked ? '👍 已赞' : '👍 赞') + ' <span class="like-n">' + r.data.likes + '</span>';
+      } else { alert(r.data.msg || '操作失败'); }
+    })();
+    return;
+  }
   const b = e.target.closest('[data-join]');
   if (!b) return;
   let obj = {};
