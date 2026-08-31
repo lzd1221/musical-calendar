@@ -15,6 +15,16 @@ node web-version/server.js
 
 > 需要本机装有 Node.js（v16+）。Windows 下直接双击 `启动网页版.bat` 也可以。
 
+## 🔐 访问密码（默认已开启）
+
+打开网页会先要求输入**访问密码**，登录后 7 天内免登录（cookie 保存）。
+
+- **默认密码：`musical2025`**
+- **修改**：编辑 `web-version/sources/config.js` 的 `PASSWORD` 字段，重启服务生效
+- **关闭保护**：把 `AUTH_ENABLED` 改为 `false`（一般不建议，尤其部署公网后）
+- 说明：登录校验在 Node 服务端完成（HMAC 签名 cookie），未登录拿不到任何数据接口；
+  GitHub Pages 静态预览版因无后端，采用前端演示锁（密码见源码，仅防误入，真实保护以服务器版为准）
+
 ## 爬取逻辑（多源 + 兜底）
 
 | 来源 | 方式 | 现状 |

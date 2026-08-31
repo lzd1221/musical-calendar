@@ -8,6 +8,12 @@
 //  → 纯服务器直抓需要：有效 Cookie 或验证后的可用接口（见 DATA-SOURCES.md）。
 //  → 系统已确保：自动抓取全部失败时，社区补录 + 官方渠道链接（theater.enrich）兜底，功能不中断。
 module.exports = {
+  // ---- 访问密码保护（服务器版：真实后端鉴权）----
+  // 部署到公网后，打开网址会先要求输入密码，登录后 7 天内免登录。
+  // ★ 请改成你自己的密码（改完重启服务生效）。关闭保护：AUTH_ENABLED: false
+  AUTH_ENABLED: true,
+  PASSWORD: 'musical2025',
+
   // ---- 各数据源总开关 ----
   ENABLE_DAMAI: true,
   ENABLE_MAOYAN: true,

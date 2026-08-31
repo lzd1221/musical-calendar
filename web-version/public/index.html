@@ -203,6 +203,39 @@ const IS_LOCAL = ['localhost', '127.0.0.1'].indexOf(location.hostname) > -1;
   document.querySelector('.wrap').prepend(b);
 })();
 
+/* ---- 预览版前端锁（仅静态托管时启用；服务器版由后端整站鉴权，无需此锁）----
+   注意：静态页面无法真正加密，此密码可见于公开源码，仅作演示/防误入。
+   真实密码保护以 server.js 后端鉴权为准（config.js 的 PASSWORD 字段）。 */
+(function previewLock() {
+  if (IS_LOCAL) return;
+  let authed = false;
+  try { authed = sessionStorage.getItem('mw_preview_auth') === '1'; } catch (e) {}
+  if (authed) return;
+  const ov = document.createElement('div');
+  ov.id = 'preview-lock';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#12101e;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML =
+    '<div style="background:#1b1730;border:1px solid #332c55;border-radius:16px;padding:36px 32px;width:320px;text-align:center">' +
+    '<div style="font-size:36px">🎭</div><h2 style="font-size:20px;margin:10px 0 6px;color:#ece9f7">音乐剧排期 & 抢票日历</h2>' +
+    '<p style="color:#a49fc4;font-size:13px;margin:0 0 20px">预览版 · 请输入访问密码</p>' +
+    '<input id="pv-pwd" type="password" placeholder="访问密码" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid #332c55;background:#221d3d;color:#ece9f7;font-size:15px;outline:none">' +
+    '<button id="pv-btn" style="width:100%;margin-top:14px;padding:12px;border-radius:10px;border:none;background:#f2b24c;color:#1a1428;font-size:15px;font-weight:600;cursor:pointer">🔓 进入</button>' +
+    '<div id="pv-err" style="color:#ff6b6b;font-size:13px;min-height:18px;margin-top:10px"></div></div>';
+  document.body.appendChild(ov);
+  const tryLogin = () => {
+    const v = document.getElementById('pv-pwd').value;
+    if (v === 'musical2025') {
+      try { sessionStorage.setItem('mw_preview_auth', '1'); } catch (e) {}
+      ov.remove();
+    } else {
+      document.getElementById('pv-err').textContent = '密码错误';
+    }
+  };
+  document.getElementById('pv-btn').onclick = tryLogin;
+  document.getElementById('pv-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+  document.getElementById('pv-pwd').focus();
+})();
+
 /* ---- 剧名词库（联想用，可自行增补）---- */
 const SHOWS = [
   { n: '剧院魅影', c: '上海' }, { n: '剧院魅影:真爱永恒', c: '上海' }, { n: '悲惨世界', c: '上海' },

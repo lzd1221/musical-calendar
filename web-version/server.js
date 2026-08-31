@@ -1,20 +1,92 @@
 // web-version/server.js —— 本地网页版后端
 // 功能：
-//   1) 静态服务 web-version/public 目录（浏览器访问 http://localhost:8765）
-//   2) GET /api/search?name=剧名&city=城市&year=年份
-//      -> 多平台真实抓取（大麦/猫眼/保利/摩天轮票牛）+ 必应搜索兜底
-//      -> 返回各来源状态、命中剧目、必应参考链接；爬不到时前端有明确提示
-// 启动：node web-version/server.js   然后浏览器打开 http://localhost:8765
+//   1) 访问密码保护（整站鉴权，未登录显示登录页）
+//   2) 静态服务 web-version/public 目录
+//   3) GET /api/search?name=剧名&city=城市&year=年份
+//      -> 多平台真实抓取（大麦/猫眼/保利/摩天轮票牛）+ 360/必应搜索兜底 + 深度解析
+// 启动：node web-version/server.js   然后浏览器打开 http://localhost:8878
 'use strict';
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const sources = require('./sources/index.js');
 const deep = require('./sources/deep.js');
+const cfg = require('./sources/config.js');
 const { showKey, primaryScore } = require('./sources/normalize.js');
 
 const PORT = Number(process.env.PORT || 8878);
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+/* ---------------- 访问密码保护（整站鉴权） ---------------- */
+const AUTH_ENABLED = cfg.AUTH_ENABLED !== false;
+const PASSWORD = String(cfg.PASSWORD || 'musical2025');
+const SECRET = crypto.createHash('sha256').update('musical-calendar:' + PASSWORD).digest('hex');
+const COOKIE_NAME = 'mw_auth';
+const AUTH_MAX_AGE = 7 * 86400 * 1000; // 7 天免登录
+
+function signToken(expires) {
+  const payload = String(expires);
+  const sig = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
+  return payload + '.' + sig;
+}
+function verifyToken(token) {
+  try {
+    const parts = String(token || '').split('.');
+    if (parts.length !== 2) return false;
+    const expect = crypto.createHmac('sha256', SECRET).update(parts[0]).digest('base64url');
+    if (expect !== parts[1]) return false;
+    const expires = parseInt(parts[0], 10);
+    return !isNaN(expires) && Date.now() <= expires;
+  } catch (e) { return false; }
+}
+function parseCookies(req) {
+  const out = {};
+  const raw = req.headers.cookie || '';
+  for (const pair of raw.split(';')) {
+    const i = pair.indexOf('=');
+    if (i > -1) out[pair.slice(0, i).trim()] = decodeURIComponent(pair.slice(i + 1).trim());
+  }
+  return out;
+}
+function isAuthed(req) {
+  if (!AUTH_ENABLED) return true;
+  return verifyToken(parseCookies(req)[COOKIE_NAME]);
+}
+function readBody(req) {
+  return new Promise(resolve => {
+    let b = '';
+    req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); });
+    req.on('end', () => resolve(b));
+    req.on('error', () => resolve(''));
+  });
+}
+
+// 极简登录页（未登录时所有路径返回此页）
+function loginPageHtml() {
+  return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1"><title>🔐 音乐剧助手 · 登录</title>' +
+    '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#12101e;color:#ece9f7;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}' +
+    '.box{background:#1b1730;border:1px solid #332c55;border-radius:16px;padding:36px 32px;width:320px;text-align:center}' +
+    'h1{font-size:20px;margin:0 0 6px}.sub{color:#a49fc4;font-size:13px;margin:0 0 22px}' +
+    'input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid #332c55;background:#221d3d;color:#ece9f7;font-size:15px;outline:none}' +
+    'input:focus{border-color:#f2b24c}' +
+    'button{width:100%;margin-top:14px;padding:12px;border-radius:10px;border:none;background:#f2b24c;color:#1a1428;font-size:15px;font-weight:600;cursor:pointer}' +
+    '#err{color:#ff6b6b;font-size:13px;min-height:18px;margin-top:10px}' +
+    'footer{position:fixed;bottom:16px;width:100%;text-align:center;color:#6f6a92;font-size:12px}</style></head>' +
+    '<body><div class="box"><h1>🎭 音乐剧排期 & 抢票日历</h1>' +
+    '<p class="sub">请输入访问密码后进入</p>' +
+    '<input id="pwd" type="password" placeholder="访问密码" autocomplete="current-password" autofocus>' +
+    '<button id="btn">🔓 进入</button><div id="err"></div></div>' +
+    '<footer>密码见 web-version/sources/config.js 的 PASSWORD 字段</footer>' +
+    '<script>function go(){var v=document.getElementById("pwd").value;if(!v)return;' +
+    'fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:v})})' +
+    '.then(function(r){if(r.ok){location.reload()}else{document.getElementById("err").textContent="密码错误"}})' +
+    '.catch(function(){document.getElementById("err").textContent="请求失败，请刷新重试"})}' +
+    'document.getElementById("btn").onclick=go;' +
+    'document.getElementById("pwd").addEventListener("keydown",function(e){if(e.key==="Enter")go()});' +
+    'document.getElementById("pwd").focus();</script></body></html>';
+}
 
 /* ---------------- 静态文件服务 ---------------- */
 const MIME = {
@@ -156,6 +228,43 @@ function buildTips(status, hits, refCount, deepHits) {
 /* ---------------- 路由 ---------------- */
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
+
+  // 登录接口（无需鉴权）
+  if (url.pathname === '/api/login' && req.method === 'POST') {
+    try {
+      const body = JSON.parse((await readBody(req)) || '{}');
+      if (body.password === PASSWORD) {
+        const token = signToken(Date.now() + AUTH_MAX_AGE);
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Set-Cookie': COOKIE_NAME + '=' + token + '; Path=/; Max-Age=604800; HttpOnly; SameSite=Lax'
+        });
+        res.end(JSON.stringify({ ok: true }));
+      } else {
+        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ ok: false, msg: '密码错误' }));
+      }
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, msg: '请求格式错误' }));
+    }
+    return;
+  }
+
+  // 登录状态检查（无需鉴权）
+  if (url.pathname === '/api/auth-status') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok: isAuthed(req) }));
+    return;
+  }
+
+  // 未登录：所有其他请求返回登录页
+  if (!isAuthed(req)) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(loginPageHtml());
+    return;
+  }
+
   if (url.pathname === '/api/search') {
     try {
       const result = await handleSearch(Object.fromEntries(url.searchParams));

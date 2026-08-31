@@ -73,7 +73,14 @@ http://你的服务器IP:8878
 
 就是完整的"在线实时爬"版了（和本地 8878 完全一样）。
 
-### 2.3 常用维护命令
+### 2.3 访问密码（部署后默认已开启）
+
+打开 `http://IP:8878` 会先要求输入**访问密码**（登录后 7 天免登录）：
+- 默认密码：`musical2025`
+- 修改：编辑 `/opt/musical-calendar/web-version/sources/config.js` 的 `PASSWORD` 字段 → `sudo systemctl restart musical-web`
+- 服务器上请务必改成你自己的强密码！
+
+### 2.4 常用维护命令
 
 ```bash
 sudo systemctl status musical-web      # 服务状态
