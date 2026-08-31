@@ -176,20 +176,36 @@ async function handleSearch(q) {
   }
   const merged = mergeResults(results, { city, year });
   const platformHits = merged.length;
+
+  // 社区共享：其他用户公开的抢票/开场信息
+  const community = plans.filter(p => {
+    if (!p.public) return false;
+    if (name && p.showName.toLowerCase().indexOf(name.toLowerCase()) === -1) return false;
+    if (city && p.city && p.city !== city) return false;
+    return true;
+  }).slice(0, 20).map(p => ({
+    id: p.id, showName: p.showName, city: p.city,
+    ticketOpenAt: p.ticketOpenAt, ticketOpenText: p.ticketOpenText,
+    perfDate: p.perfDate, perfStart: p.perfStart, venue: p.venue,
+    sharedBy: p.sharedBy || '网友'
+  }));
+
   return {
-    ok: platformHits > 0, name, city, year, list: merged, bing: searchRef, searchSrc, deepHits,
+    ok: platformHits > 0 || community.length > 0,
+    name, city, year, list: merged, bing: searchRef, searchSrc, deepHits, community,
     status, ts: Date.now(),
-    tips: buildTips(status, platformHits, searchRef.length, deepHits)
+    tips: buildTips(status, platformHits, searchRef.length, deepHits, community.length)
   };
 }
-function buildTips(status, hits, refCount, deepHits) {
+function buildTips(status, hits, refCount, deepHits, communityCount) {
   const tips = [];
   if (hits > 0) tips.push('已从票务平台获取到该剧目信息，开票时间/场次以官方页面为准。');
   else {
     tips.push('平台接口未能返回数据（多为平台反爬限制）。');
+    if (communityCount > 0) tips.push('社区网友分享的公开信息已匹配到该剧，可一键加入自己的日程。');
     if (deepHits > 0) tips.push('已从相关网页中解析出开票时间/演出信息，请核对后再抢票。');
     else if (refCount > 0) tips.push('已为你找到相关网页参考（下方列表），可点开官方/票务页面获取开票时间，或手动录入。');
-    else tips.push('搜索引擎此刻可能正被限流（间歇性反爬），建议稍后再试，或手动录入。');
+    else if (communityCount === 0) tips.push('搜索引擎此刻可能正被限流（间歇性反爬），建议稍后再试，或手动录入。');
   }
   return tips;
 }
@@ -274,6 +290,8 @@ const server = http.createServer(async (req, res) => {
       venue: String(body.venue || '').trim(),
       note: String(body.note || '').trim(),
       ticketStatus: ['已抢', '已购', '放弃'].indexOf(body.ticketStatus) > -1 ? body.ticketStatus : '待抢',
+      public: !!body.public,
+      sharedBy: usernameOf(uid),
       createdAt: Date.now(), updatedAt: Date.now()
     };
     plans.push(plan); saveJSON('plans.json', plans);
@@ -305,6 +323,7 @@ const server = http.createServer(async (req, res) => {
       if (body.venue !== undefined) plan.venue = String(body.venue || '').trim();
       if (body.note !== undefined) plan.note = String(body.note || '').trim();
       if (body.ticketStatus !== undefined) plan.ticketStatus = ['已抢', '已购', '放弃'].indexOf(body.ticketStatus) > -1 ? body.ticketStatus : '待抢';
+      if (body.public !== undefined) plan.public = !!body.public;
       plan.updatedAt = Date.now(); saveJSON('plans.json', plans);
       return json(res, 200, { ok: true, plan });
     }

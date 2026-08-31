@@ -205,6 +205,7 @@
       <div class="field"><label>演出时间</label><input type="time" id="f-time"></div>
       <div class="field"><label>场馆</label><input type="text" id="f-venue" placeholder="如：上海文化广场"></div>
       <div class="field full"><label>备注</label><input type="text" id="f-note" placeholder="如：某卡司 / 末场"></div>
+      <div class="field full"><label style="color:var(--muted);font-size:13px"><input type="checkbox" id="f-public" style="width:auto;margin-right:6px">公开给社区（其他用户可搜到并加入日程）</label></div>
     </div>
     <div class="actions">
       <button class="btn" id="btnCancel">取消</button>
@@ -351,6 +352,19 @@ function renderSearchResults(res){
         (perf.date ? '<div class="meta">🎭 场次：' + ESC(perf.date) + (perf.start ? ' ' + ESC(perf.start) : '') + (perf.venue ? ' · ' + ESC(perf.venue) : '') + (perfCount > 1 ? ' 等共 ' + perfCount + ' 场' : '') + '</div>' : '') +
         '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: s.title, city: s.city, open: s.ticketOpenText, date: perf.date, time: perf.start, venue: perf.venue }) + '">＋ 加入日历</button></div></div>';
     }
+  }
+  // 社区共享
+  if (res.community && res.community.length) {
+    html += '<div class="card" style="margin-top:14px"><h2>👥 社区共享 <span class="hint">网友公开的抢票/开场信息，可一键加入</span></h2>';
+    for (const c of res.community) {
+      html += '<div class="result-card"><div class="t">' + ESC(c.showName) + (c.city ? ' <span class="dim small">' + ESC(c.city) + '</span>' : '') + '</div>' +
+        '<div class="meta">' + (c.ticketOpenText ? '🎫 抢票：' + ESC(c.ticketOpenText) + '　' : '') +
+        (c.perfDate ? '🎭 开场：' + ESC(c.perfDate) + (c.perfStart ? ' ' + ESC(c.perfStart) : '') + '　' : '') +
+        (c.venue ? '📍' + ESC(c.venue) : '') + '</div>' +
+        '<div class="meta dim">分享自：' + ESC(c.sharedBy) + '</div>' +
+        '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: c.showName, city: c.city, open: c.ticketOpenText, date: c.perfDate, time: c.perfStart, venue: c.venue }) + '">＋ 加入我的日程</button></div></div>';
+    }
+    html += '</div>';
   }
   // 参考网页（含深度解析）
   if (res.bing && res.bing.length) {
@@ -499,6 +513,7 @@ function renderList() {
       (p.city ? ' <span class="dim small">' + ESC(p.city) + '</span>' : '') + '</div>' +
       '<div class="meta">' + open + (perf ? ' · ' + perf : '') + (p.venue ? ' · 📍' + ESC(p.venue) : '') + (p.note ? ' · ' + ESC(p.note) : '') + '</div></div>' +
       ['待抢','已抢','已购','放弃'].map(s => '<button class="btn sm ' + statusMap[s] + (p.ticketStatus === s ? ' on' : '') + '" data-act="status" data-id="' + p.id + '" data-s="' + s + '">' + s + '</button>').join('') +
+      '<button class="btn sm" data-act="pub" data-id="' + p.id + '">' + (p.public ? '👁 公开' : '🔒 私有') + '</button>' +
       '<button class="btn sm danger" data-act="del" data-id="' + p.id + '">删</button></div>';
   }).join('');
 }
@@ -513,12 +528,12 @@ $('#btnSave').onclick = async () => {
   const body = {
     showName, city: $('#f-city').value.trim(),
     ticketOpenText: $('#f-open').value, perfDate: $('#f-date').value, perfStart: $('#f-time').value,
-    venue: $('#f-venue').value.trim(), note: $('#f-note').value.trim()
+    venue: $('#f-venue').value.trim(), note: $('#f-note').value.trim(), public: $('#f-public').checked
   };
   const r = await api('/api/plans', 'POST', body);
   if (r.status === 200) {
     $('#addOverlay').classList.add('hidden');
-    $('#f-name').value = ''; $('#f-open').value = ''; $('#f-date').value = ''; $('#f-time').value = ''; $('#f-venue').value = ''; $('#f-note').value = '';
+    $('#f-name').value = ''; $('#f-open').value = ''; $('#f-date').value = ''; $('#f-time').value = ''; $('#f-venue').value = ''; $('#f-note').value = ''; $('#f-public').checked = false;
     await loadPlans();
     // 保存后回到日历视图
     $('#appView').classList.remove('hidden'); $('#searchView').classList.add('hidden');
@@ -535,6 +550,9 @@ $('#planList').addEventListener('click', async e => {
     await api('/api/plans/' + id, 'DELETE'); await loadPlans();
   } else if (b.dataset.act === 'status') {
     await api('/api/plans/' + id, 'PATCH', { ticketStatus: b.dataset.s }); await loadPlans();
+  } else if (b.dataset.act === 'pub') {
+    const p = plans.find(x => x.id === id);
+    if (p) { await api('/api/plans/' + id, 'PATCH', { public: !p.public }); await loadPlans(); }
   }
 });
 $('#upcoming').addEventListener('click', async e => {
