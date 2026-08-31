@@ -7,8 +7,8 @@ const name = '必应搜索';
 const enabled = true;
 
 const ENDPOINTS = [
-  'https://cn.bing.com/search?q={q}&setlang=zh-hans&cc=cn&count=10',
-  'https://www.bing.com/search?q={q}&setlang=zh-hans&cc=cn&count=10'
+  'https://cn.bing.com/search?q={q}&setlang=zh-hans&mkt=zh-CN&cc=cn&count=10',
+  'https://www.bing.com/search?q={q}&setlang=zh-hans&mkt=zh-CN&cc=cn&count=10'
 ];
 
 function stripHtml(s) {

@@ -37,6 +37,14 @@ function parseResults(html) {
   return out;
 }
 
+// 桌面浏览器特征请求头（降低被搜索引擎风控识别为爬虫的概率）
+const DESKTOP_HEADERS = {
+  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Referer': 'https://www.so.com/',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+};
+
 async function search({ name: keyword, year, city }) {
   // 剧名加引号精确匹配，提升相关性
   const q = ('"' + keyword + '" ' + (year || '') + ' ' + (city || '') + ' 演出 开票 购票').trim();
@@ -44,7 +52,7 @@ async function search({ name: keyword, year, city }) {
     const url = 'https://www.so.com/s?q=' + encodeURIComponent(q) + '&pn=1';
     const html = await getText(url, {
       timeoutMs: 9000,
-      headers: { 'Accept-Language': 'zh-CN,zh;q=0.9' }
+      headers: DESKTOP_HEADERS
     });
     const list = parseResults(html);
     // 按相关度排序：标题/URL 含完整剧名的排最前
