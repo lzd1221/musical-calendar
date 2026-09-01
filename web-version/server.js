@@ -188,6 +188,7 @@ async function handleSearch(q, uid) {
       id: p.id, showName: p.showName, city: p.city,
       ticketOpenAt: p.ticketOpenAt, ticketOpenText: p.ticketOpenText,
       perfDate: p.perfDate, perfStart: p.perfStart, venue: p.venue,
+      performances: p.performances || [],
       sharedBy: p.sharedBy || '网友',
       likes: (p.likedBy || []).length,
       liked: !!uid && (p.likedBy || []).indexOf(uid) > -1
@@ -293,10 +294,14 @@ const server = http.createServer(async (req, res) => {
       perfStart: String(body.perfStart || '').trim(),
       venue: String(body.venue || '').trim(),
       note: String(body.note || '').trim(),
-      ticketStatus: ['已抢', '已购', '放弃'].indexOf(body.ticketStatus) > -1 ? body.ticketStatus : '待抢',
+      ticketStatus: ['已购', '放弃'].indexOf(body.ticketStatus) > -1 ? body.ticketStatus : '',
       public: !!body.public,
       sharedBy: usernameOf(uid),
       likedBy: [],
+      // 多场次（搜索结果加入日历时带全部场次）
+      performances: Array.isArray(body.performances) ? body.performances.map(p => ({
+        date: String(p.date || '').trim(), start: String(p.start || '').trim(), venue: String(p.venue || '').trim()
+      })).filter(p => p.date) : [],
       createdAt: Date.now(), updatedAt: Date.now()
     };
     plans.push(plan); saveJSON('plans.json', plans);
@@ -343,7 +348,10 @@ const server = http.createServer(async (req, res) => {
       if (body.perfStart !== undefined) plan.perfStart = String(body.perfStart || '').trim();
       if (body.venue !== undefined) plan.venue = String(body.venue || '').trim();
       if (body.note !== undefined) plan.note = String(body.note || '').trim();
-      if (body.ticketStatus !== undefined) plan.ticketStatus = ['已抢', '已购', '放弃'].indexOf(body.ticketStatus) > -1 ? body.ticketStatus : '待抢';
+      if (body.ticketStatus !== undefined) plan.ticketStatus = ['已购', '放弃'].indexOf(body.ticketStatus) > -1 ? body.ticketStatus : '';
+      if (body.performances !== undefined && Array.isArray(body.performances)) plan.performances = body.performances.map(p => ({
+        date: String(p.date || '').trim(), start: String(p.start || '').trim(), venue: String(p.venue || '').trim()
+      })).filter(p => p.date);
       if (body.public !== undefined) plan.public = !!body.public;
       plan.updatedAt = Date.now(); saveJSON('plans.json', plans);
       return json(res, 200, { ok: true, plan });

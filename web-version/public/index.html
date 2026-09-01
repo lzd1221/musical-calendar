@@ -56,9 +56,13 @@
   .cell.other{opacity:.3}
   .day-num{font-size:12px;color:var(--muted)}
   .cell.today .day-num{color:var(--accent);font-weight:700}
-  .mark{font-size:11px;padding:1px 5px;border-radius:5px;margin-top:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .mark{font-size:11px;padding:2px 5px;border-radius:5px;margin-top:3px;overflow-wrap:break-word;word-break:break-all;line-height:1.35}
   .mark.ticket{background:rgba(255,107,107,.16);color:#ffb3b3}
   .mark.show{background:rgba(242,178,76,.16);color:#ffd98a}
+  .mark.rec{background:rgba(81,207,102,.18);color:#7ee08a;border:1px solid rgba(81,207,102,.5)}
+  .filter-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+  .fopt{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);cursor:pointer}
+  .fopt input{accent-color:var(--accent)}
 
   /* 待抢票 + 列表 */
   .item{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px dashed var(--border);flex-wrap:wrap}
@@ -153,7 +157,12 @@
       <button class="btn sm" id="calToday">今天</button>
       <button class="btn sm" id="calNext">下月 ›</button>
       <div class="spacer"></div>
-      <span class="small dim">🎫 抢票 · 🎭 看剧</span>
+      <span class="small dim">🎫 抢票 · 🎭 看剧 · ⭐ 推荐</span>
+    </div>
+    <div class="filter-row">
+      <label class="fopt"><input type="checkbox" id="fNonWorkday"> 只看非工作日</label>
+      <label class="fopt"><input type="checkbox" id="fAfter19"> 只看 19:00 后</label>
+      <span class="small dim" id="recSummary"></span>
     </div>
     <div class="cal-grid" id="calGrid"></div>
   </div>
@@ -164,9 +173,9 @@
     <div id="upcoming"></div>
   </div>
 
-  <!-- 我的计划 -->
+  <!-- 已抢 -->
   <div class="card">
-    <h2>📋 我的计划 <span class="hint">点击状态切换：待抢 / 已抢 / 已购 / 放弃</span></h2>
+    <h2>📋 已抢 <span class="hint">抢到票后标记「已购」，放弃的标「放弃」</span></h2>
     <div id="planList"></div>
   </div>
 </div>
@@ -234,6 +243,21 @@ async function api(path, method, body) {
 let ME = null;
 let plans = [];
 let calOffset = 0; // 相对当前月的偏移
+let pendingPerfs = []; // 加入日历时暂存的全部场次
+let filters = { nonWorkday: false, after19: false }; // 排期筛选条件
+
+function isWeekend(ds) { const d = new Date(ds + 'T00:00:00'); return d.getDay() === 0 || d.getDay() === 6; }
+function planPerfs(p) {
+  if (p.performances && p.performances.length) return p.performances.map(x => ({ date: x.date, start: x.start, venue: x.venue || p.venue }));
+  if (p.perfDate) return [{ date: p.perfDate, start: p.perfStart, venue: p.venue }];
+  return [];
+}
+function perfMatches(perf) {
+  let ok = true;
+  if (filters.nonWorkday && perf.date && !isWeekend(perf.date)) ok = false;
+  if (filters.after19 && perf.start && perf.start < '19:00') ok = false;
+  return ok;
+}
 
 /* ---------- 剧名词库与联想 ---------- */
 const SHOWS = [
@@ -350,7 +374,7 @@ function renderSearchResults(res){
         '<div class="meta">🎫 开票：' + (s.ticketOpenText ? ESC(s.ticketOpenText) : '未公布') +
         (s.priceText ? '　💰 ' + ESC(s.priceText) : '') + '</div>' +
         (perf.date ? '<div class="meta">🎭 场次：' + ESC(perf.date) + (perf.start ? ' ' + ESC(perf.start) : '') + (perf.venue ? ' · ' + ESC(perf.venue) : '') + (perfCount > 1 ? ' 等共 ' + perfCount + ' 场' : '') + '</div>' : '') +
-        '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: s.title, city: s.city, open: s.ticketOpenText, date: perf.date, time: perf.start, venue: perf.venue }) + '">＋ 加入日历</button></div></div>';
+        '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: s.title, city: s.city, open: s.ticketOpenText, date: perf.date, time: perf.start, venue: perf.venue, performances: s.performances }) + '">＋ 加入日历</button></div></div>';
     }
   }
   // 社区共享
@@ -362,7 +386,7 @@ function renderSearchResults(res){
         (c.perfDate ? '🎭 开场：' + ESC(c.perfDate) + (c.perfStart ? ' ' + ESC(c.perfStart) : '') + '　' : '') +
         (c.venue ? '📍' + ESC(c.venue) : '') + '</div>' +
         '<div class="meta dim">分享自：' + ESC(c.sharedBy) + '</div>' +
-        '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: c.showName, city: c.city, open: c.ticketOpenText, date: c.perfDate, time: c.perfStart, venue: c.venue }) + '">＋ 加入我的日程</button> ' +
+        '<div class="acts"><button class="btn sm primary" data-join="' + base64Item({ title: c.showName, city: c.city, open: c.ticketOpenText, date: c.perfDate, time: c.perfStart, venue: c.venue, performances: c.performances }) + '">＋ 加入我的日程</button> ' +
         '<button class="btn sm" data-like="' + c.id + '"' + (c.liked ? ' style="color:var(--accent)"' : '') + '>' + (c.liked ? '👍 已赞' : '👍 赞') + ' <span class="like-n">' + (c.likes || 0) + '</span></button></div></div>';
     }
     html += '</div>';
@@ -418,12 +442,15 @@ function joinCalendar(o){
   $('#f-time').value = o.time || '';
   $('#f-venue').value = o.venue || '';
   $('#f-note').value = '';
+  pendingPerfs = Array.isArray(o.performances) ? o.performances : [];
   $('#addOverlay').classList.remove('hidden');
 }
 
 /* ---------- 视图切换 ---------- */
 $('#btnSearch').onclick = () => { $('#appView').classList.add('hidden'); $('#searchView').classList.remove('hidden'); };
 $('#btnBackCal').onclick = () => { $('#appView').classList.remove('hidden'); $('#searchView').classList.add('hidden'); };
+$('#fNonWorkday').onchange = () => { filters.nonWorkday = $('#fNonWorkday').checked; renderCalendar(); };
+$('#fAfter19').onchange = () => { filters.after19 = $('#fAfter19').checked; renderCalendar(); };
 
 /* ---------- 登录/注册 ---------- */
 function switchAuth(mode) {
@@ -467,16 +494,21 @@ function renderCalendar() {
   const today = dateStr(new Date());
   $('#calTitle').textContent = y + '年' + m + '月';
 
+  const filterOn = filters.nonWorkday || filters.after19;
   const byDate = {};
+  let recCount = 0;
   for (const p of plans) {
     // 抢票日
     if (p.ticketOpenAt) {
       const d = dateStr(new Date(p.ticketOpenAt));
       (byDate[d] = byDate[d] || []).push({ type: 'ticket', p });
     }
-    // 演出日
-    if (p.perfDate) {
-      (byDate[p.perfDate] = byDate[p.perfDate] || []).push({ type: 'show', p });
+    // 全部场次（多场）
+    for (const perf of planPerfs(p)) {
+      if (!perf.date) continue;
+      const rec = filterOn && perfMatches(perf);
+      if (rec) recCount++;
+      (byDate[perf.date] = byDate[perf.date] || []).push({ type: 'show', p, perf, rec });
     }
   }
   let html = '<div class="dow">一</div><div class="dow">二</div><div class="dow">三</div><div class="dow">四</div><div class="dow">五</div><div class="dow">六</div><div class="dow">日</div>';
@@ -485,18 +517,23 @@ function renderCalendar() {
     const d = y + '-' + pad2(m) + '-' + pad2(day);
     const items = byDate[d] || [];
     let marks = '';
-    for (const it of items.slice(0, 3)) {
-      marks += '<div class="mark ' + (it.type === 'ticket' ? 'ticket' : 'show') + '">' + (it.type === 'ticket' ? '🎫' : '🎭') + ESC(it.p.showName) + '</div>';
+    for (const it of items.slice(0, 4)) {
+      if (it.type === 'ticket') {
+        marks += '<div class="mark ticket">🎫 ' + ESC(it.p.showName) + '</div>';
+      } else {
+        marks += '<div class="mark show' + (it.rec ? ' rec' : '') + '">' + (it.rec ? '⭐' : '🎭') + ESC(it.p.showName) + (it.perf.start ? ' ' + it.perf.start : '') + '</div>';
+      }
     }
-    if (items.length > 3) marks += '<div class="mark dim">+' + (items.length - 3) + '</div>';
+    if (items.length > 4) marks += '<div class="mark dim">+' + (items.length - 4) + '</div>';
     html += '<div class="cell' + (d === today ? ' today' : '') + '" data-date="' + d + '">' +
       '<div class="day-num">' + day + '</div>' + marks + '</div>';
   }
   $('#calGrid').innerHTML = html;
+  $('#recSummary').textContent = filterOn ? ('已按筛选推荐 ' + recCount + ' 场') : '';
 }
 function renderUpcoming() {
   const now = Date.now();
-  const upcoming = plans.filter(p => p.ticketStatus === '待抢' && p.ticketOpenAt && p.ticketOpenAt > now)
+  const upcoming = plans.filter(p => p.ticketStatus !== '已购' && p.ticketStatus !== '放弃' && p.ticketOpenAt && p.ticketOpenAt > now)
     .sort((a, b) => a.ticketOpenAt - b.ticketOpenAt);
   if (!upcoming.length) { $('#upcoming').innerHTML = '<div class="empty">暂无待抢票计划，点「＋ 添加计划」开始</div>'; return; }
   $('#upcoming').innerHTML = upcoming.map(p => {
@@ -506,7 +543,7 @@ function renderUpcoming() {
     return '<div class="item"><div style="flex:1;min-width:180px"><div class="nm">' + ESC(p.showName) + '</div>' +
       '<div class="meta">' + fmtDT(p.ticketOpenAt) + (p.venue ? ' · ' + ESC(p.venue) : '') + '</div></div>' +
       '<span class="countdown' + (hot ? ' hot' : '') + '">' + cd + '</span>' +
-      '<button class="btn sm" data-act="got" data-id="' + p.id + '">已抢</button></div>';
+      '<button class="btn sm" data-act="got" data-id="' + p.id + '">已购</button></div>';
   }).join('');
   setTimeout(renderUpcoming, 1000);
 }
@@ -516,15 +553,16 @@ function countdownText(ms) {
 }
 function renderList() {
   const list = [...plans].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-  if (!list.length) { $('#planList').innerHTML = '<div class="empty">还没有计划</div>'; return; }
-  const statusMap = { '待抢': 'status', '已抢': 'status got', '已购': 'status got', '放弃': 'status drop' };
+  if (!list.length) { $('#planList').innerHTML = '<div class="empty">还没有抢票记录</div>'; return; }
+  const statusMap = { '已购': 'status got', '放弃': 'status drop' };
   $('#planList').innerHTML = list.map(p => {
     const open = p.ticketOpenAt ? ('🎫 ' + fmtDT(p.ticketOpenAt)) : '🎫 未设抢票时间';
-    const perf = p.perfDate ? ('🎭 ' + fmtCn(p.perfDate) + (p.perfStart ? ' ' + p.perfStart : '')) : '';
+    const perfs = planPerfs(p);
+    const perfText = perfs.length ? ('🎭 ' + perfs.map(x => fmtCn(x.date) + (x.start ? ' ' + x.start : '')).slice(0, 4).join(' / ') + (perfs.length > 4 ? ' 等' + perfs.length + '场' : '')) : '';
     return '<div class="item"><div style="flex:1;min-width:200px"><div class="nm">' + ESC(p.showName) +
       (p.city ? ' <span class="dim small">' + ESC(p.city) + '</span>' : '') + '</div>' +
-      '<div class="meta">' + open + (perf ? ' · ' + perf : '') + (p.venue ? ' · 📍' + ESC(p.venue) : '') + (p.note ? ' · ' + ESC(p.note) : '') + '</div></div>' +
-      ['待抢','已抢','已购','放弃'].map(s => '<button class="btn sm ' + statusMap[s] + (p.ticketStatus === s ? ' on' : '') + '" data-act="status" data-id="' + p.id + '" data-s="' + s + '">' + s + '</button>').join('') +
+      '<div class="meta">' + open + (perfText ? ' · ' + perfText : '') + (p.venue ? ' · 📍' + ESC(p.venue) : '') + (p.note ? ' · ' + ESC(p.note) : '') + '</div></div>' +
+      ['已购', '放弃'].map(s => '<button class="btn sm ' + statusMap[s] + (p.ticketStatus === s ? ' on' : '') + '" data-act="status" data-id="' + p.id + '" data-s="' + s + '">' + s + '</button>').join('') +
       '<button class="btn sm" data-act="pub" data-id="' + p.id + '">' + (p.public ? '👁 公开' : '🔒 私有') + '</button>' +
       '<button class="btn sm danger" data-act="del" data-id="' + p.id + '">删</button></div>';
   }).join('');
@@ -540,11 +578,13 @@ $('#btnSave').onclick = async () => {
   const body = {
     showName, city: $('#f-city').value.trim(),
     ticketOpenText: $('#f-open').value, perfDate: $('#f-date').value, perfStart: $('#f-time').value,
-    venue: $('#f-venue').value.trim(), note: $('#f-note').value.trim(), public: $('#f-public').checked
+    venue: $('#f-venue').value.trim(), note: $('#f-note').value.trim(), public: $('#f-public').checked,
+    performances: pendingPerfs
   };
   const r = await api('/api/plans', 'POST', body);
   if (r.status === 200) {
     $('#addOverlay').classList.add('hidden');
+    pendingPerfs = [];
     $('#f-name').value = ''; $('#f-open').value = ''; $('#f-date').value = ''; $('#f-time').value = ''; $('#f-venue').value = ''; $('#f-note').value = ''; $('#f-public').checked = false;
     await loadPlans();
     // 保存后回到日历视图
